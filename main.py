@@ -1,5 +1,11 @@
 from typing import List, Dict, Set, Tuple
-import charm
+from charm.toolbox.pairinggroup import PairingGroup,ZR,G1,G2,GT,pair,order,H
+from funcs import *
+
+
+# DEBUG
+import code
+from charm.toolbox.pairingcurves import params as param_info #dictionary with possible pairing param_id
 
 class Client:
     """
@@ -27,7 +33,7 @@ class Client:
     def send_file(self, file):
         pass
     
-    def get_file(self, CTi, PKs, TLp, ):
+    def get_file(self, CTi, PKs, TLp):
         pass
     
     def get_decryption_key(self, Up, CTi):
@@ -43,11 +49,26 @@ class Consultant(Client):
     """
 
     def __init__(self):
-        pass
+        self.tau = 512
+        self.system_setup()
     
-    def system_setup(self, tau):
-        
-        pass
+    def system_setup(self):
+        group = PairingGroup('SS512', secparam=self.tau)
+        g, P, Q = [group.random(G1) for _ in range(3)]
+        q = group.order()
+        α, x, y, λ, σ = [num_Zn_star_not_one(q, group.random, ZR) for _ in range(5)]
+        X = g**x
+        Y = g**y
+        Pp = P**λ
+        Qp = Q**(λ-σ)
+        self.PKs = {'q':q, 'g':g, 'X':X, 'Y':Y}
+        self.SKg = {'α':α, 'P':P, 'Pp':Pp, 'Q':Q, 'Qp':Qp}
+        self.MK  = {'x':x, 'y':y, 'λ':λ, 'σ':σ}
+        self.group = group
+        # a = pair(g1**2, g2**3)
+        # b = pair(g1, g2) ** 6
+        # group.init(ZR, 10)
+        #code.interact(local=dict(globals(), **locals()))
 
     def group_auth(self, g, PKs, MKg):
         pass
@@ -75,7 +96,7 @@ class Server:
         """
         pass
     
-    def add_file(self, file):
+    def add_file(self, IR, file):
         """
         Add a client-generated index and encrypted file to the server
         """
@@ -83,7 +104,8 @@ class Server:
 
     def member_check(self, CTi, PKs):
         """
-        Check the membership of a certificate
+        Check the membership of a certificate. It takes as input:
+        o Membership Certificate 
         """
         pass
 
@@ -99,3 +121,5 @@ class Server:
         the member when the data does not contain the keywords
         """
         pass
+
+c = Consultant()
