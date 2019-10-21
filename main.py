@@ -1,7 +1,8 @@
 from typing import List, Dict, Set, Tuple
-from charm.toolbox.pairinggroup import PairingGroup,ZR,G1,G2,GT,pair,order,H
+from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
+import charm.core.math.pairing as pairing
 from funcs import *
-
+from keywords import keywords
 
 # DEBUG
 import code
@@ -15,23 +16,25 @@ class Client:
     def __init__(self, Consultant):
         self.consultant = Consultant
 
-    def make_trapdoor(self,Lp, PKs, SKg):
-        PKs = self.consultant.get_public_params()
-        ru = num_Zn_star_not_one(PKs['q'], PKs['group'], ZR)
+    def make_trapdoor(self,Lp):
+        PKs = self.consultant.PKs
+        SKg = self.consultant.SKg
+        ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
         T = []
-        if len(Lp > PKs['l']):
+        if len(Lp) > PKs['l']:
             raise ValueError("Length of Lp needs to be smaller than l")
         for i in range(PKs['l']):
             Ti = 1
-            for i in range(len(Lp))
-                Tij = PKs['g']**(ru * (PKs['α'] * PKs['group'].init(ZR, Lp[i]))**i)
+            for j in range(len(Lp)):
+                word = keywords[Lp[j]]
+                Tij = PKs['g']**(ru * (SKg['α'] * PKs['group'].init(ZR, word))**i)
                 Ti = Ti * Tij
             T.append(Ti)
         return T
-    
+
     def search_indices(self,TLp,IR, PKs):
         pass
-    
+
     def index_gen(self, R, PKs, SKg):
         pass
 
@@ -43,17 +46,15 @@ class Client:
 
     def send_file(self, file):
         pass
-    
+
     def get_file(self, CTi, PKs, TLp):
         pass
-    
+
     def get_decryption_key(self, Up, CTi):
         pass
     
-    def mem_decrypt(C, D, PKs, SKg, v):
+    def mem_decrypt(self, C, D, PKs, SKg, v):
         pass
-
-
 
 class Consultant(Client):
     """ 
@@ -63,7 +64,7 @@ class Consultant(Client):
     def __init__(self):
         self.tau = 512
         self.system_setup()
-    
+
     def system_setup(self):
         group = PairingGroup('SS512', secparam=self.tau)
         g, P, Q = [group.random(G1) for _ in range(3)]
@@ -73,10 +74,9 @@ class Consultant(Client):
         Y = g**y
         Pp = P**λ
         Qp = Q**(λ-σ)
-        self.PKs = {'q':q, 'g':g, 'X':X, 'Y':Y}
+        self.PKs = {'l':10, 'group':group, 'q':q, 'g':g, 'X':X, 'Y':Y}
         self.SKg = {'α':α, 'P':P, 'Pp':Pp, 'Q':Q, 'Qp':Qp}
         self.MK  = {'x':x, 'y':y, 'λ':λ, 'σ':σ}
-        self.group = group
         # a = pair(g1**2, g2**3)
         # b = pair(g1, g2) ** 6
         # group.init(ZR, 10)
@@ -105,11 +105,12 @@ class Server:
     This is the server (honest but curious)
     """
 
-    def __init__(self, pp: Tuple[int, int, int, int, int]):
+    def __init__(self, _group: PairingGroup, _PKs):
         """
         Initialize the server class with arguments ...
         """
-        pass
+        self.group = _group
+        self.PKs = _PKs
     
     def add_file(self, IR, file):
         """
@@ -123,6 +124,20 @@ class Server:
         o Membership Certificate 
         """
         pass
+
+    def _test(self, TLp: List[pairing.pc_element], IL: List[pairing.pc_element]) -> bool:
+        """
+        Test whether the index matches the trapdoor. It takes as input:
+        o Trapdoor `TLp`
+        o Secure index `IL`
+        o System public key PKs
+        """
+        assert len(TLp) == len(IL)
+        V = self.group.init(ZR, 1)
+        for Ii, Ti in zip(TLp, IL):
+            V *= pair(Ii, Ti)
+        print(V)
+        return V == self.group.init(ZR, 1)
 
     def search_index(self, TLp, IR, PKs):
         """
