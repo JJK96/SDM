@@ -82,12 +82,19 @@ class Consultant(Client):
     This is also the group manager (GM)
     """
 
-    def __init__(self):
-        self.tau = 512
-        self.system_setup()
+    def __init__(self, τ):
+        self.τ = τ
+        self.system_setup(τ)
 
-    def system_setup(self):
-        group = PairingGroup('SS512', secparam=self.tau)
+    def system_setup(self, τ):
+        """
+        Instantiates the scheme. Has as inputs:
+        o Security parameter `τ`
+
+        This function is executed by the GM, and outputs the system public key `PKs`,
+        the group secret key `SKg` for all group members and the master key MK for the GM.
+        """
+        group = PairingGroup('SS512', secparam=τ)
         g, P, Q = [group.random(G1) for _ in range(3)]
         q = group.order()
         α, x, y, λ, σ = [num_Zn_star_not_one(q, group.random, ZR) for _ in range(5)]
@@ -103,13 +110,47 @@ class Consultant(Client):
         # group.init(ZR, 10)
         # code.interact(local=dict(globals(), **locals()))
 
-    def group_auth(self, g, PKs, MKg):
+    ###
+    #  AuthCodGen
+    #  Generates the group membership certificates
+    ###
+
+    def group_auth(self, G):
+        """
+        This function is executed by the GM and makes the membership certificate for every member in `G`. Takes as input:
+        o Identities {ID_i }; 1 <= i <= N of all members {M_i}; 1 <= i <= N in `G`
+        o The system public key `self.PKs`
+        o The master key `self.MK`
+
+        This function outputs Membership certificates {CT_i}; 1 <= i <= N for all members
+        """
         pass
 
-    def member_join(self, g, Ms, PKs, MKg):
+    def member_join(self, G, Ms, PKs, MKg):
+        """
+        This function is executed by the GM, interacting with old members when there are new members who wish to join
+        the group. It takes as input:
+        o The certificates {CT_i}; 1 <= i <= N of all members in `G`
+        o The identities {ID_N+i }; 1 <= i <= n of all newly joining members {M_N+i}; 1 <= i <= n in `G`
+        o The system public key `self.PKs`
+        o The master key `self.MK`
+
+        This function outputs Membership certificates {CT_N+i}; 1 <= i <= N for all newly joining members, updated
+        membership certificates for the old members {M_i}; 1 <= i <= N, and an updated parameter of the system public key PKs.
+        """
         pass
 
-    def member_leave(self, g, Ms, PKs):
+    def member_leave(self, G, Ms, PKs):
+        """
+        This function is executed by the GM, interacting with the members after some members have left the group.
+        It takes as input:
+        o The certificates {CT_i}; 1 <= i <= N of all members in `G`
+        o The identities {ID_ji }; 1 <= i <= n of all leaving members {M_ji}; 1 <= i <= n in `G`
+        o The system public key `self.PKs`
+
+        This function outputs updates membership certificates for the remaining members, and an updated parameter 
+        of the system public key PKs.
+        """
         pass
 
     def get_decryption_key(self, Up, CTi, PKs, SKg, MK):
@@ -177,7 +218,7 @@ class Server:
 
 
 if __name__ == "__main__":
-    c = Consultant()
+    c = Consultant(τ=512)
     client = Client(c.PKs, c.SKg)
     server = Server(c.PKs)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
