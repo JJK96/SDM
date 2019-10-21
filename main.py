@@ -25,7 +25,7 @@ class Client:
         T = []
         if len(Lp) > PKs['l']:
             raise ValueError("Length of Lp needs to be smaller than l")
-        for i in range(PKs['l']):
+        for i in range(PKs['l'] + 1):
             Ti = 1
             for j in range(len(Lp)):
                 word = keywords[Lp[j]]
