@@ -38,7 +38,7 @@ class Client:
 
     def get_decryption_key(self, Up, CTi):
         pass
-    
+
     def mem_decrypt(self, C, D, PKs, SKg, v):
         pass
 
