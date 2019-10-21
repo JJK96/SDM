@@ -32,7 +32,7 @@ def num_Zn_star_not_one(n, fun, *args):
 
 def hash_Zn(i: int, group: PairingGroup) -> pairing.pc_element:
     sha = hashlib.sha3_512()
-    i_length = (math.log2(i) // 8) + 1
+    i_length = (int(math.log2(i)) // 8) + 1
     sha.update(i.to_bytes(i_length, byteorder="big"))
     digest = sha.digest()
     digest_int = int.from_bytes(digest, byteorder="big")
