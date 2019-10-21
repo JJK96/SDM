@@ -73,7 +73,7 @@ class Client:
 
         g = self.consultant.PKs['g']
 
-        IL = [np.power(g, rs * i) for i in polynomial_coefficients]
+        IL = [g ** (rs * i) for i in polynomial_coefficients]
         return IL
 
 
