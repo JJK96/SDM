@@ -155,12 +155,10 @@ class Server:
         o System public key PKs
         """
         assert len(TLp) == len(IL), "Length of trapdoor and index do not match!"
-        V = self.group.init(ZR, 1)
-        for Ii, Ti in zip(TLp, IL):
-            V *= pair(Ii, Ti)
+        V = self.group.pair_prod(TLp, IL)
         print(V)
-        print('test')
-        return V == self.group.init(ZR, 1)
+        print(self.group.init(GT, 1))
+        return V == self.group.init(GT, 1)
 
     def search_index(self, TLp: List[pairing.pc_element], IR: List[List[pairing.pc_element]], PKs):
         """
