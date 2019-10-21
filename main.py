@@ -39,7 +39,7 @@ class Client:
     def get_decryption_key(self, Up, CTi):
         pass
     
-    def mem_decrypt(C, D, PKs, SKg, v):
+    def mem_decrypt(self, C, D, PKs, SKg, v):
         pass
 
 
@@ -90,11 +90,12 @@ class Server:
     This is the server (honest but curious)
     """
 
-    def __init__(self, pp: Tuple[int, int, int, int, int]):
+    def __init__(self, _group, _PKs):
         """
         Initialize the server class with arguments ...
         """
-        pass
+        self.group = _group
+        self.PKs = _PKs
     
     def add_file(self, IR, file):
         """
