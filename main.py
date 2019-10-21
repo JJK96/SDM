@@ -1,7 +1,7 @@
 from typing import List, Dict, Set, Tuple
-from charm.toolbox.pairinggroup import PairingGroup,ZR,G1,G2,GT,pair,order,H
+from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
 from funcs import *
-
+from keywords import keywords
 
 # DEBUG
 import code
@@ -17,10 +17,10 @@ class Client:
 
     def make_trapdoor(self,Lp, PKs, SKg):
         pass
-    
+
     def search_indices(self,TLp,IR, PKs):
         pass
-    
+
     def index_gen(self, R, PKs, SKg):
         pass
 
@@ -32,16 +32,21 @@ class Client:
 
     def send_file(self, file):
         pass
-    
+
     def get_file(self, CTi, PKs, TLp):
         pass
-    
+
     def get_decryption_key(self, Up, CTi):
         pass
+<<<<<<< HEAD
     
     def mem_decrypt(self, C, D, PKs, SKg, v):
         pass
+=======
+>>>>>>> f519f7b77ed1ca311c9931f1a5935187f475dbd3
 
+    def mem_decrypt(self, C, D, PKs, SKg, v):
+        pass
 
 class Consultant(Client):
     """ 
@@ -51,7 +56,7 @@ class Consultant(Client):
     def __init__(self):
         self.tau = 512
         self.system_setup()
-    
+
     def system_setup(self):
         group = PairingGroup('SS512', secparam=self.tau)
         g, P, Q = [group.random(G1) for _ in range(3)]
@@ -61,10 +66,9 @@ class Consultant(Client):
         Y = g**y
         Pp = P**λ
         Qp = Q**(λ-σ)
-        self.PKs = {'q':q, 'g':g, 'X':X, 'Y':Y}
+        self.PKs = {'group':group, 'q':q, 'g':g, 'X':X, 'Y':Y}
         self.SKg = {'α':α, 'P':P, 'Pp':Pp, 'Q':Q, 'Qp':Qp}
         self.MK  = {'x':x, 'y':y, 'λ':λ, 'σ':σ}
-        self.group = group
         # a = pair(g1**2, g2**3)
         # b = pair(g1, g2) ** 6
         # group.init(ZR, 10)
