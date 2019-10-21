@@ -97,8 +97,40 @@ class Client:
     #  /DataQuery
     ###
 
+    ###
+    #  DataDcrypt
+    #  Decrypts the encrypted data
+    ###
+
     def data_aux(self, C, CTi, PKs):
+        """
+        This function is executed by a member to make an auxiliary information request associated with 
+        the encrypted data to the GM. It takes as input:
+        o The encrypted data `E(R)`
+        o The membership certificate `CTi`
+        o System public key `self.PKs`
+
+        This function outputs an auxiliary infromation `(Up, CTi)` for the GM, and a one-time secret
+        key `v` for the member.
+        """
         pass
+
+    def member_decrypt(self, C, D, v):
+        """
+        This function is executed by the member to obtain the data. It takes as input:
+        o The encrypted data `E(R)`
+        o The decryption key `D`
+        o System public key `self.PKs`
+        o Group secret key `self.SKg`
+        o Member one-time secret key `v`
+
+        This function outputs the desired data `R`
+        """
+        pass
+    
+    ###
+    #  /DataDcrypt
+    ###
 
     def send_file(self, file):
         pass
@@ -106,13 +138,14 @@ class Client:
     def get_file(self, CTi, PKs, TLp):
         pass
 
-    def get_decryption_key(self, Up, CTi):
-        pass
+    def _build_index(self, L):
+        """
+        This function takes as input:
+        o Keyword list `L`
+        o System parameter PM = {`self.PKs`, `self.SKg`}
 
-    def mem_decrypt(self, C, D, PKs, SKg, v):
-        pass
-
-    def build_index(self, L):
+        This function outputs secure index `IL`
+        """
         SKg = self.SKg
         PKs = self.PKs
         α = SKg['α']
@@ -211,11 +244,26 @@ class Consultant(Client):
     #  /AuthCodGen
     ###
 
-    def get_decryption_key(self, Up, CTi, PKs, SKg, MK):
+    ###
+    #  DataDcrypt
+    #  Decrypts the encrypted data
+    ###
+
+    def get_decryption_key(self, Up, CTi):
+        """
+        This function is executed by the GM to make a decryption key for the member. It takes as input:
+        o The auxiliary information `(Up, CTi)`
+        o System public key `self.PKs`
+        o Group system key `self.SKg`
+        o Master key `self.MK`
+
+        This functions outputs the decryption key `D` or Access Denied for the member.
+        """
         pass
 
-    def member_decrypt(self, C, D, PKs, SKg, v):
-        pass
+    ###
+    #  /DataDcrypt
+    ###
 
     def get_public_params(self):
         return self.PKs
@@ -293,7 +341,7 @@ if __name__ == "__main__":
     client = Client(c.PKs, c.SKg)
     server = Server(c.PKs)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
-    il = client.build_index(word_list)
+    il = client._build_index(word_list)
     query = word_list[3:4]
     query = ['gold', 'dry', 'stead', 'heat']
     print(query)
