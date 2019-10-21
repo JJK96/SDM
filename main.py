@@ -131,7 +131,6 @@ class Server:
         """
         Initialize the server class with arguments ...
         """
-        self.group = _PKs['group']
         self.PKs = _PKs
 
     def add_file(self, IR, file):
@@ -155,10 +154,13 @@ class Server:
         o System public key PKs
         """
         assert len(TLp) == len(IL), "Length of trapdoor and index do not match!"
-        V = self.group.pair_prod(TLp, IL)
+
+        PKs = self.PKs
+
+        V = PKs['group'].pair_prod(TLp, IL)
         print(V)
-        print(self.group.init(GT, 1))
-        return V == self.group.init(GT, 1)
+        print(PKs['group'].init(GT, 1))
+        return V == PKs['group'].init(GT, 1)
 
     def search_index(self, TLp: List[pairing.pc_element], IR: List[List[pairing.pc_element]], PKs):
         """
