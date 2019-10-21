@@ -12,11 +12,22 @@ class Client:
     This is the client
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, Consultant):
+        self.consultant = Consultant
 
     def make_trapdoor(self,Lp, PKs, SKg):
-        pass
+        PKs = self.consultant.get_public_params()
+        ru = num_Zn_star_not_one(PKs['q'], PKs['group'], ZR)
+        T = []
+        if len(Lp > PKs['l']):
+            raise ValueError("Length of Lp needs to be smaller than l")
+        for i in range(PKs['l']):
+            Ti = 1
+            for i in range(len(Lp))
+                Tij = PKs['g']**(ru * (PKs['α'] * PKs['group'].init(ZR, Lp[i]))**i)
+                Ti = Ti * Tij
+            T.append(Ti)
+        return T
     
     def search_indices(self,TLp,IR, PKs):
         pass
@@ -41,6 +52,7 @@ class Client:
     
     def mem_decrypt(C, D, PKs, SKg, v):
         pass
+
 
 
 class Consultant(Client):
@@ -85,6 +97,9 @@ class Consultant(Client):
     def member_decrypt(self, C, D, PKs, SKg, v):
         pass
 
+    def get_public_params(self):
+        return self.PKs 
+
 class Server:
     """ 
     This is the server (honest but curious)
@@ -123,3 +138,4 @@ class Server:
         pass
 
 c = Consultant()
+c1 = Client(c)
