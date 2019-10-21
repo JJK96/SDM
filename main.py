@@ -16,12 +16,13 @@ class Client:
     This is the client
     """
 
-    def __init__(self, consultant):
-        self.consultant = consultant
+    def __init__(self, PKs, SKg):
+        self.PKs = PKs
+        self.SKg = SKg
 
     def make_trapdoor(self, Lp):
-        PKs = self.consultant.PKs
-        SKg = self.consultant.SKg
+        PKs = self.PKs
+        SKg = self.SKg
         ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
         T = []
         if len(Lp) > PKs['l']:
@@ -58,20 +59,21 @@ class Client:
         pass
 
     def build_index(self, L):
-        SKg = self.consultant.SKg
+        SKg = self.SKg
+        PKs = self.PKs
         α = SKg['α']
 
         roots = []
         for word in L:
-            roots.append(int(α * hash_Zn(keywords[word], self.consultant.PKs['group'])))
+            roots.append(int(α * hash_Zn(keywords[word], PKs['group'])))
 
         polynomial_coefficients = list(polyfromroots(roots))
 
-        rs = num_Zn_star_not_one(self.consultant.PKs['q'], self.consultant.PKs['group'].random, ZR)
+        rs = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
 
-        g = self.consultant.PKs['g']
+        g = PKs['g']
 
-        IL = [g ** (rs * self.consultant.PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
+        IL = [g ** (rs * PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
         return IL
 
 
@@ -174,7 +176,7 @@ class Server:
 
 if __name__ == "__main__":
     c = Consultant()
-    client = Client(c)
+    client = Client(c.PKs, c.SKg)
     server = Server(c.PKs)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
     il = client.build_index(word_list)
