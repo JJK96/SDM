@@ -25,6 +25,31 @@ class Client:
     #  Builds searchable encrypted data that are uploaded to the server.
     ###
 
+    def _build_index(self, L):
+        """
+        This function takes as input:
+        o Keyword list `L`
+        o System parameter PM = {`self.PKs`, `self.SKg`}
+
+        This function outputs secure index `IL`
+        """
+        SKg = self.SKg
+        PKs = self.PKs
+        α = SKg['α']
+
+        roots = []
+        for word in L:
+            roots.append(int(α * hash_Zn(keywords[word], PKs['group'])))
+
+        polynomial_coefficients = list(polyfromroots(roots))
+
+        rs = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
+
+        g = PKs['g']
+
+        IL = [g ** (rs * PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
+        return IL
+
     def index_gen(self, R):
         """
         This function makes a secure index. It takes as input:
@@ -137,31 +162,6 @@ class Client:
 
     def get_file(self, CTi, PKs, TLp):
         pass
-
-    def _build_index(self, L):
-        """
-        This function takes as input:
-        o Keyword list `L`
-        o System parameter PM = {`self.PKs`, `self.SKg`}
-
-        This function outputs secure index `IL`
-        """
-        SKg = self.SKg
-        PKs = self.PKs
-        α = SKg['α']
-
-        roots = []
-        for word in L:
-            roots.append(int(α * hash_Zn(keywords[word], PKs['group'])))
-
-        polynomial_coefficients = list(polyfromroots(roots))
-
-        rs = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
-
-        g = PKs['g']
-
-        IL = [g ** (rs * PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
-        return IL
 
 
 class Consultant(Client):
