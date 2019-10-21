@@ -8,7 +8,8 @@ import numpy as np
 
 # DEBUG
 import code
-from charm.toolbox.pairingcurves import params as param_info #dictionary with possible pairing param_id
+from charm.toolbox.pairingcurves import params as param_info  # dictionary with possible pairing param_id
+
 
 class Client:
     """
@@ -18,7 +19,7 @@ class Client:
     def __init__(self, consultant):
         self.consultant = consultant
 
-    def make_trapdoor(self,Lp):
+    def make_trapdoor(self, Lp):
         PKs = self.consultant.PKs
         SKg = self.consultant.SKg
         ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
@@ -29,12 +30,12 @@ class Client:
             Ti = 1
             for j in range(len(Lp)):
                 word = keywords[Lp[j]]
-                Tij = PKs['g']**(ru * (SKg['α'] * PKs['group'].init(ZR, word))**i)
+                Tij = PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, PKs['group'])) ** i)
                 Ti = Ti * Tij
             T.append(Ti)
         return T
 
-    def search_indices(self,TLp,IR, PKs):
+    def search_indices(self, TLp, IR, PKs):
         pass
 
     def index_gen(self, R, PKs, SKg):
@@ -54,7 +55,7 @@ class Client:
 
     def get_decryption_key(self, Up, CTi):
         pass
-    
+
     def mem_decrypt(self, C, D, PKs, SKg, v):
         pass
 
@@ -64,7 +65,7 @@ class Client:
 
         roots = []
         for word in L:
-            roots.append(int(α * self.consultant.PKs['group'].init(ZR, keywords[word])))
+            roots.append(int(α * hash_Zn(keywords[word], self.consultant.PKs['group'])))
 
         polynomial_coefficients = list(polyfromroots(roots))
 
@@ -90,17 +91,17 @@ class Consultant(Client):
         g, P, Q = [group.random(G1) for _ in range(3)]
         q = group.order()
         α, x, y, λ, σ = [num_Zn_star_not_one(q, group.random, ZR) for _ in range(5)]
-        X = g**x
-        Y = g**y
-        Pp = P**λ
-        Qp = Q**(λ-σ)
-        self.PKs = {'l':10, 'group':group, 'q':q, 'g':g, 'X':X, 'Y':Y}
-        self.SKg = {'α':α, 'P':P, 'Pp':Pp, 'Q':Q, 'Qp':Qp}
-        self.MK  = {'x':x, 'y':y, 'λ':λ, 'σ':σ}
+        X = g ** x
+        Y = g ** y
+        Pp = P ** λ
+        Qp = Q ** (λ - σ)
+        self.PKs = {'l': 10, 'group': group, 'q': q, 'g': g, 'X': X, 'Y': Y}
+        self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
+        self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         # a = pair(g1**2, g2**3)
         # b = pair(g1, g2) ** 6
         # group.init(ZR, 10)
-        #code.interact(local=dict(globals(), **locals()))
+        # code.interact(local=dict(globals(), **locals()))
 
     def group_auth(self, g, PKs, MKg):
         pass
@@ -120,6 +121,7 @@ class Consultant(Client):
     def get_public_params(self):
         return self.PKs
 
+
 class Server:
     """ 
     This is the server (honest but curious)
@@ -131,7 +133,7 @@ class Server:
         """
         self.group = _group
         self.PKs = _PKs
-    
+
     def add_file(self, IR, file):
         """
         Add a client-generated index and encrypted file to the server
@@ -157,6 +159,7 @@ class Server:
         for Ii, Ti in zip(TLp, IL):
             V *= pair(Ii, Ti)
         print(V)
+        print('test')
         return V == self.group.init(ZR, 1)
 
     def search_index(self, TLp: List[pairing.pc_element], IR: List[List[pairing.pc_element]], PKs):
@@ -176,4 +179,9 @@ class Server:
 if __name__ == "__main__":
     c = Consultant()
     client = Client(c)
-    # il = client.build_index(['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball'])
+    server = Server(c.PKs['group'], c.PKs)
+    word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
+    il = client.build_index(word_list)
+    t = client.make_trapdoor(word_list)
+    test = server._test(t, il)
+    print(test)
