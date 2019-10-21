@@ -127,11 +127,11 @@ class Server:
     This is the server (honest but curious)
     """
 
-    def __init__(self, _group: PairingGroup, _PKs):
+    def __init__(self, _PKs):
         """
         Initialize the server class with arguments ...
         """
-        self.group = _group
+        self.group = _PKs['group']
         self.PKs = _PKs
 
     def add_file(self, IR, file):
@@ -179,7 +179,7 @@ class Server:
 if __name__ == "__main__":
     c = Consultant()
     client = Client(c)
-    server = Server(c.PKs['group'], c.PKs)
+    server = Server(c.PKs)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
     il = client.build_index(word_list)
     t = client.make_trapdoor(word_list)
