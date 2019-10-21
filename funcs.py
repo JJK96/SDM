@@ -1,4 +1,7 @@
 from fractions import gcd
+import charm.core.math.pairing as pairing
+from charm.toolbox.pairinggroup import PairingGroup, ZR
+import hashlib
 
 def num_Zn_star(n, fun, *args):
     """
@@ -26,3 +29,9 @@ def num_Zn_star_not_one(n, fun, *args):
         if int(num) != 1:
             return num
 
+def hash_Zn(i: int, group: PairingGroup) -> pairing.pc_element:
+    sha = hashlib.sha3_512()
+    sha.update(i)
+    digest = sha.digest()
+    digest_int = int.from_bytes(digest, byteorder="big")
+    return group.init(ZR, digest_int)
