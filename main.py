@@ -1,6 +1,7 @@
 from typing import List, Dict, Set, Tuple
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
 from funcs import *
+from keywords import keywords
 
 # DEBUG
 import code
