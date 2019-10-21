@@ -19,23 +19,6 @@ class Client:
     def __init__(self, PKs, SKg):
         self.PKs = PKs
         self.SKg = SKg
-
-    def make_trapdoor(self, Lp):
-        PKs = self.PKs
-        SKg = self.SKg
-        ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
-        T = []
-        if len(Lp) > PKs['l']:
-            raise ValueError("Length of Lp needs to be smaller than l")
-        for i in range(PKs['l'] + 1):
-            i = PKs['group'].init(ZR, i)
-            Ti = PKs['group'].init(G1, 1)
-            for j in range(len(Lp)):
-                word = keywords[Lp[j]]  # What if keyword not in keywordlist?
-                Tij = PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, PKs['group'])) ** i)
-                Ti = Ti * Tij
-            T.append(Ti)
-        return T
     
     ###
     #  DataGen
@@ -67,6 +50,51 @@ class Client:
 
     ###
     #  /DataGen
+    ###
+
+    ###
+    #  DataQuery
+    #  Retrieves the encrypted data which contains specific keywords
+    ###
+
+    def _trapdoor(self, Lp):
+        """
+        This function takes as input:
+        o Keyword list `Lp`
+        o System parameter PM = {`self.PKs`, `self.SKg`}
+        
+        This function outputs the trapdoor `TLp` of the list `Lp`
+        """
+        PKs = self.PKs
+        SKg = self.SKg
+        ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
+        T = []
+        if len(Lp) > PKs['l']:
+            raise ValueError("Length of Lp needs to be smaller than l")
+        for i in range(PKs['l'] + 1):
+            i = PKs['group'].init(ZR, i)
+            Ti = PKs['group'].init(G1, 1)
+            for j in range(len(Lp)):
+                word = keywords[Lp[j]]  # What if keyword not in keywordlist?
+                Tij = PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, PKs['group'])) ** i)
+                Ti = Ti * Tij
+            T.append(Ti)
+        return T
+    
+    def make_trapdoor(self, Lp):
+        """
+        This function is executed by a group member to make a trapdoor of a list of keywords the
+        member want to search. It takes as input:
+        o A keyword list `Lp`
+        o System public key `PKs`
+        o Group secret key `SKg`
+
+        This function generates the trapdoor `TLp` of `Lp`, and outputs a query `(TLp, CTi)` to the server
+        """
+        pass
+    
+    ###
+    #  /DataQuery
     ###
 
     def data_aux(self, C, CTi, PKs):
@@ -210,10 +238,19 @@ class Server:
         """
         pass
 
+    ###
+    #  DataQuery
+    #  Retrieves the encrypted data which contains specific keywords
+    ###
+
     def member_check(self, CTi, PKs):
         """
-        Check the membership of a certificate. It takes as input:
-        o Membership Certificate 
+        This function check the membership of a certificate. It takes as input:
+        o Membership Certificate `CTi`
+        o System public key `PKs`
+
+        This function outputs either Yes for access granted, or Access Denied to
+        terminate the protocol.
         """
         pass
 
@@ -246,6 +283,10 @@ class Server:
         """
         pass
 
+    ###
+    #  /DataQuery
+    ###
+
 
 if __name__ == "__main__":
     c = Consultant(τ=512)
@@ -256,6 +297,6 @@ if __name__ == "__main__":
     query = word_list[3:4]
     query = ['gold', 'dry', 'stead', 'heat']
     print(query)
-    t = client.make_trapdoor(query)
+    t = client._trapdoor(query)
     test = server._test(t, il)
     print(test)
