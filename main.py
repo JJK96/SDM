@@ -36,12 +36,38 @@ class Client:
                 Ti = Ti * Tij
             T.append(Ti)
         return T
+    
+    ###
+    #  DataGen
+    #  Builds searchable encrypted data that are uploaded to the server.
+    ###
 
-    def index_gen(self, R, PKs, SKg):
+    def index_gen(self, R):
+        """
+        This function makes a secure index. It takes as input:
+        o A data R
+        o System public key `self.PKs`
+        o Group secret key `self.SKg`
+
+        This function outputs secure index IR
+        """
         pass
 
-    def data_encrypt(self, R, PKs, SKg, IR):
+    def data_encrypt(self, R, IR):
+        """
+        This function encrypts the data. It takes as input:
+        o A data R
+        o System public key `self.PKs`
+        o Group secret key `self.SKg`
+        o Secure index IR corresponding to data R
+
+        This function outputs encrypted data E(R) and uploads E(R) to the server
+        """
         pass
+
+    ###
+    #  /DataGen
+    ###
 
     def data_aux(self, C, CTi, PKs):
         pass
@@ -152,6 +178,10 @@ class Consultant(Client):
         of the system public key PKs.
         """
         pass
+
+    ###
+    #  /AuthCodGen
+    ###
 
     def get_decryption_key(self, Up, CTi, PKs, SKg, MK):
         pass
