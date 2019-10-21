@@ -1,7 +1,6 @@
 from typing import List, Dict, Set, Tuple
-from charm.toolbox.pairinggroup import PairingGroup,ZR,G1,G2,GT,pair,order,H
+from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
 from funcs import *
-
 
 # DEBUG
 import code
@@ -17,10 +16,10 @@ class Client:
 
     def make_trapdoor(self,Lp, PKs, SKg):
         pass
-    
+
     def search_indices(self,TLp,IR, PKs):
         pass
-    
+
     def index_gen(self, R, PKs, SKg):
         pass
 
@@ -32,16 +31,15 @@ class Client:
 
     def send_file(self, file):
         pass
-    
+
     def get_file(self, CTi, PKs, TLp):
         pass
-    
+
     def get_decryption_key(self, Up, CTi):
         pass
-    
-    def mem_decrypt(C, D, PKs, SKg, v):
-        pass
 
+    def mem_decrypt(self, C, D, PKs, SKg, v):
+        pass
 
 class Consultant(Client):
     """ 
@@ -51,7 +49,7 @@ class Consultant(Client):
     def __init__(self):
         self.tau = 512
         self.system_setup()
-    
+
     def system_setup(self):
         group = PairingGroup('SS512', secparam=self.tau)
         g, P, Q = [group.random(G1) for _ in range(3)]
@@ -95,7 +93,7 @@ class Server:
         Initialize the server class with arguments ...
         """
         pass
-    
+
     def add_file(self, IR, file):
         """
         Add a client-generated index and encrypted file to the server
