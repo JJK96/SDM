@@ -38,13 +38,7 @@ class Client:
 
     def get_decryption_key(self, Up, CTi):
         pass
-<<<<<<< HEAD
     
-    def mem_decrypt(self, C, D, PKs, SKg, v):
-        pass
-=======
->>>>>>> f519f7b77ed1ca311c9931f1a5935187f475dbd3
-
     def mem_decrypt(self, C, D, PKs, SKg, v):
         pass
 
@@ -94,7 +88,7 @@ class Server:
     This is the server (honest but curious)
     """
 
-    def __init__(self, _group, _PKs):
+    def __init__(self, _group: PairingGroup, _PKs):
         """
         Initialize the server class with arguments ...
         """
@@ -113,6 +107,16 @@ class Server:
         o Membership Certificate 
         """
         pass
+
+    def _test(self, TLp, IL) -> bool:
+        """
+        Test whether the index matches the trapdoor. It takes as input:
+        o Trapdoor `TLp`
+        o Secure index `IL`
+        o System public key PKs
+        """
+        
+        return False
 
     def search_index(self, TLp, IR, PKs):
         """
