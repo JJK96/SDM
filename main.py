@@ -60,10 +60,9 @@ class Consultant(Client):
         Y = g**y
         Pp = P**λ
         Qp = Q**(λ-σ)
-        self.PKs = {'q':q, 'g':g, 'X':X, 'Y':Y}
+        self.PKs = {'group':group, 'q':q, 'g':g, 'X':X, 'Y':Y}
         self.SKg = {'α':α, 'P':P, 'Pp':Pp, 'Q':Q, 'Qp':Qp}
         self.MK  = {'x':x, 'y':y, 'λ':λ, 'σ':σ}
-        self.group = group
         # a = pair(g1**2, g2**3)
         # b = pair(g1, g2) ** 6
         # group.init(ZR, 10)
