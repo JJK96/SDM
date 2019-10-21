@@ -19,7 +19,7 @@ class Client:
     def __init__(self, PKs, SKg):
         self.PKs = PKs
         self.SKg = SKg
-    
+
     ###
     #  DataGen
     #  Builds searchable encrypted data that are uploaded to the server.
@@ -87,7 +87,7 @@ class Client:
         This function takes as input:
         o Keyword list `Lp`
         o System parameter PM = {`self.PKs`, `self.SKg`}
-        
+
         This function outputs the trapdoor `TLp` of the list `Lp`
         """
         PKs = self.PKs
@@ -105,7 +105,7 @@ class Client:
                 Ti = Ti * Tij
             T.append(Ti)
         return T
-    
+
     def make_trapdoor(self, Lp):
         """
         This function is executed by a group member to make a trapdoor of a list of keywords the
@@ -117,7 +117,7 @@ class Client:
         This function generates the trapdoor `TLp` of `Lp`, and outputs a query `(TLp, CTi)` to the server
         """
         pass
-    
+
     ###
     #  /DataQuery
     ###
@@ -129,7 +129,7 @@ class Client:
 
     def data_aux(self, C, CTi, PKs):
         """
-        This function is executed by a member to make an auxiliary information request associated with 
+        This function is executed by a member to make an auxiliary information request associated with
         the encrypted data to the GM. It takes as input:
         o The encrypted data `E(R)`
         o The membership certificate `CTi`
@@ -152,7 +152,7 @@ class Client:
         This function outputs the desired data `R`
         """
         pass
-    
+
     ###
     #  /DataDcrypt
     ###
@@ -162,6 +162,29 @@ class Client:
 
     def get_file(self, CTi, PKs, TLp):
         pass
+
+    def get_decryption_key(self, Up, CTi):
+        pass
+
+    def mem_decrypt(self, C, D, PKs, SKg, v):
+        pass
+
+    def build_index(self, L):
+        SKg = self.consultant.SKg
+        α = SKg['α']
+
+        roots = []
+        for word in L:
+            roots.append(α * hash_Zn(keywords[word], self.consultant.PKs['group']))
+
+        polynomial_coefficients = list(polyfromroots(roots))
+
+        rs = num_Zn_star_not_one(self.consultant.PKs['q'], self.consultant.PKs['group'].random, ZR)
+
+        g = self.consultant.PKs['g']
+
+        IL = [g ** (rs * i) for i in polynomial_coefficients]
+        return IL
 
 
 class Consultant(Client):
@@ -235,7 +258,7 @@ class Consultant(Client):
         o The identities {ID_ji }; 1 <= i <= n of all leaving members {M_ji}; 1 <= i <= n in `G`
         o The system public key `self.PKs`
 
-        This function outputs updates membership certificates for the remaining members, and an updated parameter 
+        This function outputs updates membership certificates for the remaining members, and an updated parameter
         of the system public key PKs.
         """
         pass
