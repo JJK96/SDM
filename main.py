@@ -126,7 +126,7 @@ class Consultant(Client):
         """
         pass
 
-    def member_join(self, G, Ms, PKs, MKg):
+    def member_join(self, G, Ms):
         """
         This function is executed by the GM, interacting with old members when there are new members who wish to join
         the group. It takes as input:
@@ -140,7 +140,7 @@ class Consultant(Client):
         """
         pass
 
-    def member_leave(self, G, Ms, PKs):
+    def member_leave(self, G, Ms):
         """
         This function is executed by the GM, interacting with the members after some members have left the group.
         It takes as input:
