@@ -27,7 +27,8 @@ class Client:
         if len(Lp) > PKs['l']:
             raise ValueError("Length of Lp needs to be smaller than l")
         for i in range(PKs['l'] + 1):
-            Ti = 1
+            i = PKs['group'].init(ZR, i)
+            Ti = PKs['group'].init(G1, 1)
             for j in range(len(Lp)):
                 word = keywords[Lp[j]]
                 Tij = PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, PKs['group'])) ** i)
@@ -73,7 +74,7 @@ class Client:
 
         g = self.consultant.PKs['g']
 
-        IL = [g ** (rs * i) for i in polynomial_coefficients]
+        IL = [g ** (rs * self.consultant.PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
         return IL
 
 
@@ -180,6 +181,9 @@ if __name__ == "__main__":
     server = Server(c.PKs)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
     il = client.build_index(word_list)
-    t = client.make_trapdoor(word_list)
+    query = word_list[3:4]
+    query = ['gold', 'dry', 'stead', 'heat']
+    print(query)
+    t = client.make_trapdoor(query)
     test = server._test(t, il)
     print(test)
