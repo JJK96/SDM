@@ -3,6 +3,8 @@ from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order
 import charm.core.math.pairing as pairing
 from funcs import *
 from keywords import keywords
+from numpy.polynomial.polynomial import polyfromroots
+import numpy as np
 
 # DEBUG
 import code
@@ -13,11 +15,24 @@ class Client:
     This is the client
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, consultant):
+        self.consultant = consultant
 
-    def make_trapdoor(self,Lp, PKs, SKg):
-        pass
+    def make_trapdoor(self,Lp):
+        PKs = self.consultant.PKs
+        SKg = self.consultant.SKg
+        ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
+        T = []
+        if len(Lp) > PKs['l']:
+            raise ValueError("Length of Lp needs to be smaller than l")
+        for i in range(PKs['l']):
+            Ti = 1
+            for j in range(len(Lp)):
+                word = keywords[Lp[j]]
+                Tij = PKs['g']**(ru * (SKg['α'] * PKs['group'].init(ZR, word))**i)
+                Ti = Ti * Tij
+            T.append(Ti)
+        return T
 
     def search_indices(self,TLp,IR, PKs):
         pass
@@ -42,6 +57,24 @@ class Client:
     
     def mem_decrypt(self, C, D, PKs, SKg, v):
         pass
+
+    def build_index(self, L):
+        SKg = self.consultant.SKg
+        α = SKg['α']
+
+        roots = []
+        for word in L:
+            roots.append(int(α * self.consultant.PKs['group'].init(ZR, keywords[word])))
+
+        polynomial_coefficients = list(polyfromroots(roots))
+
+        rs = num_Zn_star_not_one(self.consultant.PKs['q'], self.consultant.PKs['group'].random, ZR)
+
+        g = self.consultant.PKs['g']
+
+        IL = [np.power(g, rs * i) for i in polynomial_coefficients]
+        return IL
+
 
 class Consultant(Client):
     """ 
@@ -83,6 +116,9 @@ class Consultant(Client):
 
     def member_decrypt(self, C, D, PKs, SKg, v):
         pass
+
+    def get_public_params(self):
+        return self.PKs
 
 class Server:
     """ 
@@ -136,4 +172,8 @@ class Server:
         """
         pass
 
-c = Consultant()
+
+if __name__ == "__main__":
+    c = Consultant()
+    client = Client(c)
+    # il = client.build_index(['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball'])
