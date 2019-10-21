@@ -30,14 +30,11 @@ class Client:
             i = PKs['group'].init(ZR, i)
             Ti = PKs['group'].init(G1, 1)
             for j in range(len(Lp)):
-                word = keywords[Lp[j]]
+                word = keywords[Lp[j]]  # What if keyword not in keywordlist?
                 Tij = PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, PKs['group'])) ** i)
                 Ti = Ti * Tij
             T.append(Ti)
         return T
-
-    def search_indices(self, TLp, IR, PKs):
-        pass
 
     def index_gen(self, R, PKs, SKg):
         pass
