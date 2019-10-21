@@ -1,5 +1,6 @@
 from typing import List, Dict, Set, Tuple
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
+import charm.core.math.pairing as pairing
 from funcs import *
 from keywords import keywords
 
@@ -108,15 +109,19 @@ class Server:
         """
         pass
 
-    def _test(self, TLp, IL) -> bool:
+    def _test(self, TLp: List[pairing.pc_element], IL: List[pairing.pc_element]) -> bool:
         """
         Test whether the index matches the trapdoor. It takes as input:
         o Trapdoor `TLp`
         o Secure index `IL`
         o System public key PKs
         """
-        
-        return False
+        assert len(TLp) == len(IL)
+        V = self.group.init(ZR, 1)
+        for Ii, Ti in zip(TLp, IL):
+            V *= pair(Ii, Ti)
+        print(V)
+        return V == self.group.init(ZR, 1)
 
     def search_index(self, TLp, IR, PKs):
         """
