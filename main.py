@@ -18,10 +18,11 @@ class Client:
     This is the client
     """
 
-    def __init__(self, PKs, SKg):
+    def __init__(self, PKs, SKg, server):
         self.PKs = PKs
         self.SKg = SKg
         self.id = uuid.uuid4().int
+        self.server = server
     
     def add_certificate(self, CTi: Dict[str, pairing.pc_element]):
         assert not hasattr(self, "CTi"), "Client already has a certificate!"
@@ -104,7 +105,7 @@ class Client:
 
         Er = (U, V)
         # Upload E(R) and Ir to the server; print for now
-        print(f"Uploading E(R)={Er} and IR={IR}")
+        self.server.add_file(IR, Er)
 
     ###
     #  /DataGen
@@ -401,6 +402,7 @@ class Server:
         Initialize the server class with arguments ...
         """
         self.PKs = _PKs
+        self.documents = []
     
     def update_public_key(self, t):
         self.PKs['X'] = self.PKs['X'] ** t
@@ -409,7 +411,7 @@ class Server:
         """
         Add a client-generated index and encrypted file to the server
         """
-        pass
+        self.documents.append((IR, file))
 
     ###
     #  DataQuery
@@ -447,22 +449,30 @@ class Server:
         PKs = self.PKs
 
         V = PKs['group'].pair_prod(TLp, IL)
-        print(V)
-        print(PKs['group'].init(GT, 1))
         return V == PKs['group'].init(GT, 1)
 
-    def search_index(self, TLp: List[pairing.pc_element], IR: List[List[pairing.pc_element]], PKs):
+    def search_index(self, TLp: List[pairing.pc_element], CTi):
         """
         Scan all secure indexes against the trapdoor. It takes as input:
         o Trapdoor `TLp`
-        o Secure index `IR`
-        o System public key `PKs`
+        o System public key `self.PKs`
+        o Membership Certificate `CTi`
 
         This function outputs the encrypted data `E(R)` for the member when 
         the data includes the searched keywords or "No Data Matched" for 
         the member when the data does not contain the keywords
         """
-        pass
+        if self.member_check(CTi):
+            result = []
+
+            for IR, file in self.documents:
+                if self._test(TLp, IR):
+                    result.append(file)
+            
+            return result
+
+        else:
+            return "Access Denied"
 
     ###
     #  /DataQuery
@@ -470,9 +480,9 @@ class Server:
 
 def test_index_trapdoor_test():
     c = Consultant(τ=512)
-    client = Client(c.PKs, c.SKg)
     server = Server(c.PKs)
     c.add_server(server)
+    client = Client(c.PKs, c.SKg, server)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
     il = client._build_index(word_list)
     query = word_list[3:4]
@@ -489,7 +499,7 @@ def test_group_auth():
     c.add_server(server)
 
     c.group_auth(
-        set([Client(c.PKs, c.SKg) for _ in range(3)])
+        set([Client(c.PKs, c.SKg, server) for _ in range(3)])
     )
 
 
@@ -499,10 +509,10 @@ def test_member_join():
     c.add_server(server)
 
     c.group_auth(
-        set([Client(c.PKs, c.SKg) for _ in range(3)])
+        set([Client(c.PKs, c.SKg, server) for _ in range(3)])
     )
     c.member_join(
-        set([Client(c.PKs, c.SKg) for _ in range(2)])
+        set([Client(c.PKs, c.SKg, server) for _ in range(2)])
     )
 
 
@@ -512,10 +522,10 @@ def test_member_leave():
     c.add_server(server)
 
     c.group_auth(
-        set([Client(c.PKs, c.SKg) for _ in range(3)])
+        set([Client(c.PKs, c.SKg, server) for _ in range(3)])
     )
     c.member_join(
-        set([Client(c.PKs, c.SKg) for _ in range(2)])
+        set([Client(c.PKs, c.SKg, server) for _ in range(2)])
     )
 
     to_leave = list(c.G)[2:4]
@@ -526,7 +536,9 @@ def test_member_leave():
 
 def test_data_encrypt():
     c = Consultant(τ=512)
-    client = Client(c.PKs, c.SKg)
+    server = Server(c.PKs)
+    c.add_server(server)
+    client = Client(c.PKs, c.SKg, server)
 
     R = os.urandom(32)      # R will later probably by a 256-bit key used for hybrid encryption of a document, but is random bytes for now for testing
     IR = client.index_gen(R)
@@ -535,9 +547,9 @@ def test_data_encrypt():
 
 def test_member_check():
     c = Consultant(τ=512)
-    clients = [Client(c.PKs, c.SKg) for _ in range(5)]
     server = Server(c.PKs)
     c.add_server(server)
+    clients = [Client(c.PKs, c.SKg, server) for _ in range(5)]
 
     c.group_auth(
         set(clients[:3])
@@ -560,6 +572,33 @@ def test_member_check():
     assert not server.member_check(clients[2].CTi), "Client 2 should not be member!"
 
 
+def test_search_index():
+    c = Consultant(τ=512)
+    server = Server(c.PKs)
+    c.add_server(server)
+    clients = [Client(c.PKs, c.SKg, server) for _ in range(5)]
+
+    c.group_auth(
+        set(clients[:3])
+    )
+
+    for _ in range(5):
+        R = os.urandom(32)      # R will later probably by a 256-bit key used for hybrid encryption of a document, but is random bytes for now for testing
+        IR = clients[0].index_gen(R)
+        clients[0].data_encrypt(R, IR)
+    
+    trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
+    search_results = server.search_index(trapdoor, clients[2].CTi)
+
+    assert len(search_results) == 5, "Did not get 5 documents returned!"
+
+    trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'test'])
+    search_results = server.search_index(trapdoor, clients[2].CTi)
+
+    assert len(search_results) == 0, "Got results when we should not have!"
+
+
+
 def run_test(test: Callable[[], None]):
     from time import time
 
@@ -577,3 +616,4 @@ if __name__ == "__main__":
     run_test(test_member_leave)
     run_test(test_data_encrypt)
     run_test(test_member_check)
+    run_test(test_search_index)
