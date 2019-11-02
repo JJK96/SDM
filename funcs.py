@@ -4,6 +4,7 @@ from charm.toolbox.pairinggroup import PairingGroup, ZR, H, hashPair
 import hashlib
 import math
 from typing import SupportsFloat
+from keywords import keywords
 
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
@@ -93,6 +94,25 @@ def read_file(path: str) -> str:
     for line in lines:
         s += line
     return s
+
+
+def extract_keywords(doc: str) -> List[str]:
+    # Remove leestekens
+    doc = doc.replace(".", "")
+    doc = doc.replace(",", "")
+    doc = doc.replace("?", "")
+    doc = doc.replace("!", "")
+
+    # Remove duplicates
+    doc = set(doc.split(" "))
+
+    result = []
+
+    for word in doc:
+        if word in keywords:
+            result.append(word)
+    
+    return result
 
 
 def encrypt_document(doc: str) -> (bytes, bytes):
