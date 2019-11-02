@@ -139,7 +139,7 @@ class Client:
             T.append(Ti)
         return T
 
-    def make_trapdoor(self, Lp):
+    def make_trapdoor(self, Lp: List[str]):
         """
         This function is executed by a group member to make a trapdoor of a list of keywords the
         member want to search. It takes as input:
@@ -149,7 +149,7 @@ class Client:
 
         This function generates the trapdoor `TLp` of `Lp`, and outputs a query `(TLp, CTi)` to the server
         """
-        pass
+        return self._trapdoor(Lp)   # should also send a search request to server?
 
     ###
     #  /DataQuery
