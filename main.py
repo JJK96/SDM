@@ -175,13 +175,13 @@ class Client:
 
         roots = []
         for word in L:
-            roots.append(α * hash_Zn(keywords[word], self.consultant.PKs['group']))
+            roots.append(α * hash_Zn(keywords[word], self.PKs['group']))
 
         polynomial_coefficients = list(polyfromroots(roots))
 
-        rs = num_Zn_star_not_one(self.consultant.PKs['q'], self.consultant.PKs['group'].random, ZR)
+        rs = num_Zn_star_not_one(self.PKs['q'], self.PKs['group'].random, ZR)
 
-        g = self.consultant.PKs['g']
+        g = self.PKs['g']
 
         IL = [g ** (rs * i) for i in polynomial_coefficients]
         return IL
