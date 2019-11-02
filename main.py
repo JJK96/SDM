@@ -242,7 +242,7 @@ class Consultant(Client):
     #  Generates the group membership certificates
     ###
 
-    def group_auth(self, G: List[Client]):
+    def group_auth(self, G: Set[Client]):
         """
         This function is executed by the GM and makes the membership certificate for every member in `G`. Takes as input:
         o Identities {ID_i }; 1 <= i <= N of all members {M_i}; 1 <= i <= N in `G`
@@ -255,8 +255,6 @@ class Consultant(Client):
         x = self.MK['x']
         y = self.MK['y']
 
-        self.G = G
-
         ## Step 1
         for member in G:
             ai = group.random(G1)
@@ -266,9 +264,12 @@ class Consultant(Client):
             CTi = {'ai': ai, 'bi': bi, 'ci': ci}
             member.add_certificate(CTi)
         
+        # Save the members that are authenticated for later use
+        self.G = G
+        
         ## Step 2: keep CTi secret!
 
-    def member_join(self, Ms: List[Client]):
+    def member_join(self, Ms: Set[Client]):
         """
         This function is executed by the GM, interacting with old members when there are new members who wish to join
         the group. It takes as input:
@@ -303,9 +304,16 @@ class Consultant(Client):
 
             CTi = {'ai': ai, 'bi': bi, 'ci': ci}
             new_member.add_certificate(CTi)
+        
+        # Add the new members to the member group
+        self.G.update(Ms)
+        
+        ## Step 3: let old members update ci, we do this already in member.update_certificate
+
+        ## Step 4: new members keep CTi secret!
 
 
-    def member_leave(self, G, Ms):
+    def member_leave(self, Ms: Set[Client]):
         """
         This function is executed by the GM, interacting with the members after some members have left the group.
         It takes as input:
@@ -316,7 +324,22 @@ class Consultant(Client):
         This function outputs updates membership certificates for the remaining members, and an updated parameter
         of the system public key PKs.
         """
-        pass
+        group = self.PKs['group']
+        q = self.PKs['q']
+        X = self.PKs['X']
+
+        ## Step 1
+        t = num_Zn_star_not_one(q, group.random, ZR)
+        self.PKs['X'] = X ** t
+        for member in self.G.difference(Ms):
+            member.update_certificate(t)
+        
+        # Remove the old members from the group
+        self.G = self.G.difference(Ms)
+
+        ## Step 2: let remaining members update ci, we do this already in member.update_certificate
+
+        ## Step 3: remaining members keep CTi secret!
 
     ###
     #  /AuthCodGen
@@ -430,17 +453,32 @@ def test_index_trapdoor_test():
 def test_group_auth():
     c = Consultant(τ=512)
     c.group_auth(
-        [Client(c.PKs, c.SKg) for _ in range(3)]
+        set([Client(c.PKs, c.SKg) for _ in range(3)])
     )
 
 
 def test_member_join():
     c = Consultant(τ=512)
     c.group_auth(
-        [Client(c.PKs, c.SKg) for _ in range(3)]
+        set([Client(c.PKs, c.SKg) for _ in range(3)])
     )
     c.member_join(
-        [Client(c.PKs, c.SKg) for _ in range(2)]
+        set([Client(c.PKs, c.SKg) for _ in range(2)])
+    )
+
+
+def test_member_leave():
+    c = Consultant(τ=512)
+    c.group_auth(
+        set([Client(c.PKs, c.SKg) for _ in range(3)])
+    )
+    c.member_join(
+        set([Client(c.PKs, c.SKg) for _ in range(2)])
+    )
+
+    to_leave = list(c.G)[2:4]
+    c.member_leave(
+        set(to_leave)
     )
 
 
@@ -456,4 +494,6 @@ def run_test(test: Callable[[], None]):
     print(f"Ran test {test} in {t1-t0} seconds")
 
 if __name__ == "__main__":
+    run_test(test_group_auth)
     run_test(test_member_join)
+    run_test(test_member_leave)
