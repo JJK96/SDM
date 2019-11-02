@@ -161,7 +161,7 @@ class Client:
     #  Decrypts the encrypted data
     ###
 
-    def data_aux(self, C, CTi, PKs):
+    def data_aux(self, Er, CTi):
         """
         This function is executed by a member to make an auxiliary information request associated with
         the encrypted data to the GM. It takes as input:
@@ -172,20 +172,37 @@ class Client:
         This function outputs an auxiliary infromation `(Up, CTi)` for the GM, and a one-time secret
         key `v` for the member.
         """
-        pass
+        group = self.PKs['group']
+        q = self.PKs['q']
+        
+        U, V = Er
 
-    def member_decrypt(self, C, D, v):
+        μ = num_Zn_star_not_one(q, group.random, ZR)
+        ν = ~μ
+
+        Up = U ** μ
+
+        ## Send (U', CTi) to Consultant to get decryption key
+
+        # Return Up, ν for now since we need to save it for decryption
+        return Up, ν
+        
+
+    def member_decrypt(self, Er, D, ν):
         """
         This function is executed by the member to obtain the data. It takes as input:
         o The encrypted data `E(R)`
         o The decryption key `D`
         o System public key `self.PKs`
         o Group secret key `self.SKg`
-        o Member one-time secret key `v`
+        o Member one-time secret key `ν`
 
         This function outputs the desired data `R`
         """
-        pass
+        U, V = Er
+        Qp = self.SKg['Qp']
+
+        return xor(V, hash_p((D ** ν) * pair(Qp, U)))
 
     ###
     #  /DataDcrypt
@@ -382,7 +399,22 @@ class Consultant(Client):
 
         This functions outputs the decryption key `D` or Access Denied for the member.
         """
-        pass
+        X = self.PKs['X']
+        Y = self.PKs['Y']
+        g = self.PKs['g']
+        group = self.PKs['group']
+
+        Q = self.SKg['Q']
+        σ = self.MK['σ']
+
+        member = pair(CTi['ai'], Y) == pair(g, CTi['bi']) and \
+            pair(X, CTi['ai']) * pair(X, CTi['bi']) ** hash_Zn(CTi['IDi'], group) == pair(g, CTi['ci'])
+
+        if member:
+            D = pair(Q, Up) ** σ
+            return D
+        else:
+            return "Access Denied"
 
     ###
     #  /DataDcrypt
@@ -598,6 +630,33 @@ def test_search_index():
     assert len(search_results) == 0, "Got results when we should not have!"
 
 
+def test_datadcrypt():
+    c = Consultant(τ=512)
+    server = Server(c.PKs)
+    c.add_server(server)
+    clients = [Client(c.PKs, c.SKg, server) for _ in range(5)]
+
+    c.group_auth(
+        set(clients[:3])
+    )
+
+    Rs = []
+
+    for _ in range(5):
+        R = os.urandom(32)      # R will later probably by a 256-bit key used for hybrid encryption of a document, but is random bytes for now for testing
+        Rs.append(R)
+        IR = clients[0].index_gen(R)
+        clients[0].data_encrypt(R, IR)
+    
+    trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
+    search_results = server.search_index(trapdoor, clients[2].CTi)
+
+    for i, result in enumerate(search_results):
+        Up, ν = clients[2].data_aux(result, clients[2].CTi)
+        D = c.get_decryption_key(Up, clients[2].CTi)
+        Rp = clients[2].member_decrypt(result, D, ν)
+        assert Rp == Rs[i], f"Recovered R not the same as encrypted R in round {i}!"
+
 
 def run_test(test: Callable[[], None]):
     from time import time
@@ -617,3 +676,4 @@ if __name__ == "__main__":
     run_test(test_data_encrypt)
     run_test(test_member_check)
     run_test(test_search_index)
+    run_test(test_datadcrypt)
