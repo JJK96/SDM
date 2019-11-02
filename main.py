@@ -1,4 +1,4 @@
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Set, Tuple, Callable
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
 import charm.core.math.pairing as pairing
 from funcs import *
@@ -369,8 +369,7 @@ class Server:
     #  /DataQuery
     ###
 
-
-if __name__ == "__main__":
+def test_index_trapdoor_test():
     c = Consultant(τ=512)
     client = Client(c.PKs, c.SKg)
     server = Server(c.PKs)
@@ -382,3 +381,23 @@ if __name__ == "__main__":
     t = client._trapdoor(query)
     test = server._test(t, il)
     print(test)
+
+
+def test_group_auth():
+    c = Consultant(τ=512)
+    c.group_auth(list(range(5)))
+
+
+def run_test(test: Callable[[], None]):
+    from time import time
+
+    print(f"Running test {test}")
+    t0 = time()
+    
+    test()
+
+    t1 = time()
+    print(f"Ran test {test} in {t1-t0} seconds")
+
+if __name__ == "__main__":
+    run_test(test_group_auth)
