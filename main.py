@@ -238,6 +238,7 @@ class Consultant(Client):
         x = self.MK['x']
         y = self.MK['y']
 
+        ## Step 1
         for member in G:
             ai = group.random(G1)
             bi = ai ** y
@@ -246,6 +247,8 @@ class Consultant(Client):
             CTi = {'ai': ai, 'bi': bi, 'ci': ci}
             # Send CTi to member i; print CTi for now
             print(CTi)
+        
+        ## Step 2: keep CTi secret!
 
     def member_join(self, G, Ms):
         """
