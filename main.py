@@ -76,7 +76,9 @@ class Client:
 
         This function outputs secure index IR
         """
-        pass
+        keywords = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball'] # extract_keywords(R)
+        
+        return self._build_index(keywords)
 
     def data_encrypt(self, R, IR):
         """
