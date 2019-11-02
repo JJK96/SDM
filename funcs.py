@@ -3,7 +3,7 @@ import charm.core.math.pairing as pairing
 from charm.toolbox.pairinggroup import PairingGroup, ZR, H, hashPair
 import hashlib
 import math
-from typing import SupportsFloat
+from typing import SupportsFloat, List
 from keywords import keywords
 
 from Crypto.Random import get_random_bytes
@@ -92,7 +92,7 @@ def read_file(path: str) -> str:
 
     s = ""
     for line in lines:
-        s += line
+        s += line + " "
     return s
 
 
@@ -102,6 +102,7 @@ def extract_keywords(doc: str) -> List[str]:
     doc = doc.replace(",", "")
     doc = doc.replace("?", "")
     doc = doc.replace("!", "")
+    doc = doc.replace("\n", "")
 
     # Remove duplicates
     doc = set(doc.split(" "))
