@@ -225,7 +225,7 @@ class Consultant(Client):
     #  Generates the group membership certificates
     ###
 
-    def group_auth(self, G):
+    def group_auth(self, G: List[int]):
         """
         This function is executed by the GM and makes the membership certificate for every member in `G`. Takes as input:
         o Identities {ID_i }; 1 <= i <= N of all members {M_i}; 1 <= i <= N in `G`
@@ -234,7 +234,18 @@ class Consultant(Client):
 
         This function outputs Membership certificates {CT_i}; 1 <= i <= N for all members
         """
-        pass
+        group = self.PKs['group']
+        x = self.MK['x']
+        y = self.MK['y']
+
+        for member in G:
+            ai = group.random(G1)
+            bi = ai ** y
+            ci = ai ** (x + hash_Zn(member, self.PKs['group']) * x * y)
+
+            CTi = {'ai': ai, 'bi': bi, 'ci': ci}
+            # Send CTi to member i; print CTi for now
+            print(CTi)
 
     def member_join(self, G, Ms):
         """
