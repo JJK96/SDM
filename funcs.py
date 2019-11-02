@@ -3,6 +3,7 @@ import charm.core.math.pairing as pairing
 from charm.toolbox.pairinggroup import PairingGroup, ZR
 import hashlib
 import math
+from typing import SupportsFloat
 
 
 def num_Zn_star(n, fun, *args):
@@ -33,9 +34,18 @@ def num_Zn_star_not_one(n, fun, *args):
             return num
 
 
+def log2(x: SupportsFloat):
+    assert x >= 0.0
+
+    if x == 0.0:
+        return 0.0
+    else:
+        return math.log2(x)
+
+
 def hash_Zn(i: int, group: PairingGroup) -> pairing.pc_element:
     sha = hashlib.sha3_512()
-    i_length = (int(math.log2(i)) // 8) + 1
+    i_length = (int(log2(i)) // 8) + 1
     sha.update(i.to_bytes(i_length, byteorder="big"))
     digest = sha.digest()
     digest_int = int.from_bytes(digest, byteorder="big")
