@@ -5,6 +5,8 @@ import hashlib
 import math
 from typing import SupportsFloat
 
+from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES
 
 def num_Zn_star(n, fun, *args):
     """
@@ -81,6 +83,36 @@ def _my_poly_root_evaluation(a, b):
         for j in range(len(b)):
             c[i + j] = c[i + j] + a[i] * b[j]
     return c
+
+
+def read_file(path: str) -> str:
+    f = open(path, 'r')
+    lines = f.readlines()
+
+    s = ""
+    for line in lines:
+        s += line
+    return s
+
+
+def encrypt_document(doc: str) -> (bytes, bytes):
+    doc_raw = doc.encode('utf-8')
+
+    key = get_random_bytes(32)
+    cipher = AES.new(key, AES.MODE_EAX)
+
+    ciphertext, tag = cipher.encrypt_and_digest(doc_raw)
+
+    return key, cipher.nonce + tag + ciphertext
+
+
+def decrypt_document(key: bytes, ciphertext: bytes) -> str:
+    nonce, tag, ciphertext = ciphertext[:16], ciphertext[16:32], ciphertext[32:]
+    cipher = AES.new(key, AES.MODE_EAX, nonce)
+    doc_raw = cipher.decrypt_and_verify(ciphertext, tag)
+
+    return doc_raw.decode('utf-8')
+
 
 if __name__ == '__main__':
     print(poly_from_roots([6, 2, 3]))
