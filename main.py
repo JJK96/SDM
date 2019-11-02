@@ -5,6 +5,7 @@ from funcs import *
 from keywords import keywords
 from numpy.polynomial.polynomial import polyfromroots
 import numpy as np
+import uuid
 
 # DEBUG
 import code
@@ -19,6 +20,22 @@ class Client:
     def __init__(self, PKs, SKg):
         self.PKs = PKs
         self.SKg = SKg
+        self.id = uuid.uuid4().int
+    
+    def add_certificate(self, CTi: Dict[str, pairing.pc_element]):
+        assert not hasattr(self, "CTi"), "Client already has a certificate!"
+
+        self.CTi = CTi
+
+    def update_certificate(self, t: pairing.pc_element):
+        assert hasattr(self, "CTi"), "Client has no certificate to update!"
+
+        ## Step 1
+        self.PKs['X'] = self.PKs['X'] ** t
+
+        ## Step 3
+        self.CTi['ci'] = self.CTi['ci'] ** t
+
 
     ###
     #  DataGen
@@ -170,7 +187,7 @@ class Client:
         pass
 
     def build_index(self, L):
-        SKg = self.consultant.SKg
+        SKg = self.SKg
         α = SKg['α']
 
         roots = []
@@ -225,7 +242,7 @@ class Consultant(Client):
     #  Generates the group membership certificates
     ###
 
-    def group_auth(self, G: List[int]):
+    def group_auth(self, G: List[Client]):
         """
         This function is executed by the GM and makes the membership certificate for every member in `G`. Takes as input:
         o Identities {ID_i }; 1 <= i <= N of all members {M_i}; 1 <= i <= N in `G`
@@ -238,19 +255,20 @@ class Consultant(Client):
         x = self.MK['x']
         y = self.MK['y']
 
+        self.G = G
+
         ## Step 1
         for member in G:
             ai = group.random(G1)
             bi = ai ** y
-            ci = ai ** (x + hash_Zn(member, self.PKs['group']) * x * y)
+            ci = ai ** (x + hash_Zn(member.id, group) * x * y)
 
             CTi = {'ai': ai, 'bi': bi, 'ci': ci}
-            # Send CTi to member i; print CTi for now
-            print(CTi)
+            member.add_certificate(CTi)
         
         ## Step 2: keep CTi secret!
 
-    def member_join(self, G, Ms):
+    def member_join(self, Ms: List[Client]):
         """
         This function is executed by the GM, interacting with old members when there are new members who wish to join
         the group. It takes as input:
@@ -262,7 +280,30 @@ class Consultant(Client):
         This function outputs Membership certificates {CT_N+i}; 1 <= i <= N for all newly joining members, updated
         membership certificates for the old members {M_i}; 1 <= i <= N, and an updated parameter of the system public key PKs.
         """
-        pass
+        assert self.G is not None, "group_auth needs to be called before member_join!"
+
+        group = self.PKs['group']
+        q = self.PKs['q']
+        X = self.PKs['X']
+
+        x = self.MK['x']
+        y = self.MK['y']
+
+        ## Step 1
+        t = num_Zn_star_not_one(q, group.random, ZR)
+        self.PKs['X'] = X ** t
+        for member in self.G:
+            member.update_certificate(t)
+
+        ## Step 2
+        for new_member in Ms:
+            ai = group.random(G1)
+            bi = ai ** y
+            ci = ai ** (t * (x + hash_Zn(new_member.id, group) * x * y))
+
+            CTi = {'ai': ai, 'bi': bi, 'ci': ci}
+            new_member.add_certificate(CTi)
+
 
     def member_leave(self, G, Ms):
         """
@@ -388,7 +429,19 @@ def test_index_trapdoor_test():
 
 def test_group_auth():
     c = Consultant(τ=512)
-    c.group_auth(list(range(5)))
+    c.group_auth(
+        [Client(c.PKs, c.SKg) for _ in range(3)]
+    )
+
+
+def test_member_join():
+    c = Consultant(τ=512)
+    c.group_auth(
+        [Client(c.PKs, c.SKg) for _ in range(3)]
+    )
+    c.member_join(
+        [Client(c.PKs, c.SKg) for _ in range(2)]
+    )
 
 
 def run_test(test: Callable[[], None]):
@@ -403,4 +456,4 @@ def run_test(test: Callable[[], None]):
     print(f"Ran test {test} in {t1-t0} seconds")
 
 if __name__ == "__main__":
-    run_test(test_group_auth)
+    run_test(test_member_join)
