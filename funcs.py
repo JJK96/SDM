@@ -83,6 +83,20 @@ def _my_poly_root_evaluation(a, b):
     return c
 
 
+def xgcd(b, a):
+    x0, x1, y0, y1 = 1, 0, 0, 1
+    while a != 0:
+        q, b, a = b // a, a, b % a
+        x0, x1 = x1, x0 - q * x1
+        y0, y1 = y1, y0 - q * y1
+    return  b, x0, y0
+
+
+def mulinv(b, n):
+    g, x, _ = xgcd(b, n)
+    if g == 1:
+        return x % n
+
 if __name__ == '__main__':
     print(poly_from_roots([6, 2, 3]))
     print(poly_from_roots([2, 3]))
