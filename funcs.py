@@ -1,6 +1,6 @@
 from fractions import gcd
 import charm.core.math.pairing as pairing
-from charm.toolbox.pairinggroup import PairingGroup, ZR
+from charm.toolbox.pairinggroup import PairingGroup, ZR, H, hashPair
 import hashlib
 import math
 from typing import SupportsFloat
@@ -51,6 +51,15 @@ def hash_Zn(i: int, group: PairingGroup) -> pairing.pc_element:
     digest_int = int.from_bytes(digest, byteorder="big")
     return group.init(ZR, digest_int)
 
+def hash_p(elem: pairing.pc_element) -> bytes:
+    sha3 = hashlib.sha3_256()
+    hashed = hashPair(elem)
+    sha3.update(hashed)
+    return sha3.digest()
+
+def xor(a: bytes, b: bytes) -> bytes:
+    assert len(a) == len(b)
+    return bytes([x ^ y for x,y in zip(a, b)])
 
 def poly_from_roots(roots):
     mutated_roots = []
