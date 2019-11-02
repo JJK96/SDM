@@ -6,6 +6,7 @@ from keywords import keywords
 from numpy.polynomial.polynomial import polyfromroots
 import numpy as np
 import uuid
+import os
 
 # DEBUG
 import code
@@ -90,7 +91,20 @@ class Client:
 
         This function outputs encrypted data E(R) and uploads E(R) to the server
         """
-        pass
+        group = self.PKs['group']
+        q = self.PKs['q']
+        P = self.SKg['P']
+        Q = self.SKg['Q']
+        Pp = self.SKg['Pp']
+
+        γ = num_Zn_star_not_one(q, group.random, ZR)  # let op dit is een gamma, niet een standaard y
+        U = P ** γ
+
+        V = xor(R, hash_p(pair(Q, Pp) ** γ))
+
+        Er = (U, V)
+        # Upload E(R) and Ir to the server; print for now
+        print(f"Uploading E(R)={Er} and IR={IR}")
 
     ###
     #  /DataGen
@@ -484,6 +498,15 @@ def test_member_leave():
     )
 
 
+def test_data_encrypt():
+    c = Consultant(τ=512)
+    client = Client(c.PKs, c.SKg)
+
+    R = os.urandom(32)      # R will later probably by a 256-bit key used for hybrid encryption of a document, but is random bytes for now for testing
+    IR = client.index_gen(R)
+    client.data_encrypt(R, IR)
+
+
 def run_test(test: Callable[[], None]):
     from time import time
 
@@ -499,3 +522,4 @@ if __name__ == "__main__":
     run_test(test_group_auth)
     run_test(test_member_join)
     run_test(test_member_leave)
+    run_test(test_data_encrypt)
