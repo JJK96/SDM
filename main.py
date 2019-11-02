@@ -69,26 +69,29 @@ class Client:
         IL = [g ** (rs * PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
         return IL
 
-    def index_gen(self, R):
+    def index_gen(self, D):
         """
         This function makes a secure index. It takes as input:
-        o A data R
+        o A document D
         o System public key `self.PKs`
         o Group secret key `self.SKg`
 
-        This function outputs secure index IR
+        This function outputs secure index IR, document encryption key R and encrypted document Ed
         """
-        keywords = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball'] # extract_keywords(R)
+        keywords = extract_keywords(D)
+        print(keywords)
+        R, Ed = encrypt_document(D)
         
-        return self._build_index(keywords)
+        return self._build_index(keywords), R, Ed
 
-    def data_encrypt(self, R, IR):
+    def data_encrypt(self, R, IR, Ed):
         """
         This function encrypts the data. It takes as input:
-        o A data R
+        o A data encryption key `R`
+        o A encrypted data `Ed` encrypted with `R`
         o System public key `self.PKs`
         o Group secret key `self.SKg`
-        o Secure index IR corresponding to data R
+        o Secure index IR corresponding to data `R`
 
         This function outputs encrypted data E(R) and uploads E(R) to the server
         """
@@ -103,7 +106,7 @@ class Client:
 
         V = xor(R, hash_p(pair(Q, Pp) ** γ))
 
-        Er = (U, V)
+        Er = (U, V, Ed)
         # Upload E(R) and Ir to the server; print for now
         self.server.add_file(IR, Er)
 
@@ -175,7 +178,7 @@ class Client:
         group = self.PKs['group']
         q = self.PKs['q']
         
-        U, V = Er
+        U, V, Ed = Er
 
         μ = num_Zn_star_not_one(q, group.random, ZR)
         ν = ~μ
@@ -199,10 +202,11 @@ class Client:
 
         This function outputs the desired data `R`
         """
-        U, V = Er
+        U, V, Ed = Er
         Qp = self.SKg['Qp']
 
-        return xor(V, hash_p((D ** ν) * pair(Qp, U)))
+        R = xor(V, hash_p((D ** ν) * pair(Qp, U)))
+        return R, Ed
 
     ###
     #  /DataDcrypt
@@ -266,7 +270,7 @@ class Consultant(Client):
         Y = g ** y
         Pp = P ** λ
         Qp = Q ** (λ - σ)
-        self.PKs = {'l': 10, 'group': group, 'q': q, 'g': g, 'X': X, 'Y': Y}
+        self.PKs = {'l': 11, 'group': group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         # a = pair(g1**2, g2**3)
@@ -572,9 +576,9 @@ def test_data_encrypt():
     c.add_server(server)
     client = Client(c.PKs, c.SKg, server)
 
-    R = os.urandom(32)      # R will later probably by a 256-bit key used for hybrid encryption of a document, but is random bytes for now for testing
-    IR = client.index_gen(R)
-    client.data_encrypt(R, IR)
+    D = read_file("documents/client0/doc0.txt")
+    IR, R, Ed = client.index_gen(D)
+    client.data_encrypt(R, IR, Ed)
 
 
 def test_member_check():
@@ -615,9 +619,9 @@ def test_search_index():
     )
 
     for _ in range(5):
-        R = os.urandom(32)      # R will later probably by a 256-bit key used for hybrid encryption of a document, but is random bytes for now for testing
-        IR = clients[0].index_gen(R)
-        clients[0].data_encrypt(R, IR)
+        D = read_file("documents/client0/doc0.txt")
+        IR, R, Ed = clients[0].index_gen(D)
+        clients[0].data_encrypt(R, IR, Ed)
     
     trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
     search_results = server.search_index(trapdoor, clients[2].CTi)
@@ -643,10 +647,10 @@ def test_datadcrypt():
     Rs = []
 
     for _ in range(5):
-        R = os.urandom(32)      # R will later probably by a 256-bit key used for hybrid encryption of a document, but is random bytes for now for testing
+        D = read_file("documents/client0/doc0.txt")
+        IR, R, Ed = clients[0].index_gen(D)
         Rs.append(R)
-        IR = clients[0].index_gen(R)
-        clients[0].data_encrypt(R, IR)
+        clients[0].data_encrypt(R, IR, Ed)
     
     trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
     search_results = server.search_index(trapdoor, clients[2].CTi)
@@ -654,8 +658,10 @@ def test_datadcrypt():
     for i, result in enumerate(search_results):
         Up, ν = clients[2].data_aux(result, clients[2].CTi)
         D = c.get_decryption_key(Up, clients[2].CTi)
-        Rp = clients[2].member_decrypt(result, D, ν)
+        Rp, Ed = clients[2].member_decrypt(result, D, ν)
         assert Rp == Rs[i], f"Recovered R not the same as encrypted R in round {i}!"
+
+        print(decrypt_document(Rp, Ed))
 
 
 def run_test(test: Callable[[], None]):
