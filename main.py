@@ -228,6 +228,9 @@ class Consultant(Client):
     def __init__(self, τ):
         self.τ = τ
         self.system_setup(τ)
+    
+    def add_server(self, server):
+        self.server = server
 
     def system_setup(self, τ):
         """
@@ -277,7 +280,7 @@ class Consultant(Client):
             bi = ai ** y
             ci = ai ** (x + hash_Zn(member.id, group) * x * y)
 
-            CTi = {'ai': ai, 'bi': bi, 'ci': ci}
+            CTi = {'IDi': member.id, 'ai': ai, 'bi': bi, 'ci': ci}
             member.add_certificate(CTi)
         
         # Save the members that are authenticated for later use
@@ -311,6 +314,7 @@ class Consultant(Client):
         self.PKs['X'] = X ** t
         for member in self.G:
             member.update_certificate(t)
+        self.server.update_public_key(t)
 
         ## Step 2
         for new_member in Ms:
@@ -318,7 +322,7 @@ class Consultant(Client):
             bi = ai ** y
             ci = ai ** (t * (x + hash_Zn(new_member.id, group) * x * y))
 
-            CTi = {'ai': ai, 'bi': bi, 'ci': ci}
+            CTi = {'IDi': member.id, 'ai': ai, 'bi': bi, 'ci': ci}
             new_member.add_certificate(CTi)
         
         # Add the new members to the member group
@@ -349,6 +353,7 @@ class Consultant(Client):
         self.PKs['X'] = X ** t
         for member in self.G.difference(Ms):
             member.update_certificate(t)
+        self.server.update_public_key(t)
         
         # Remove the old members from the group
         self.G = self.G.difference(Ms)
@@ -396,6 +401,9 @@ class Server:
         Initialize the server class with arguments ...
         """
         self.PKs = _PKs
+    
+    def update_public_key(self, t):
+        self.PKs['X'] = self.PKs['X'] ** t
 
     def add_file(self, IR, file):
         """
@@ -408,16 +416,24 @@ class Server:
     #  Retrieves the encrypted data which contains specific keywords
     ###
 
-    def member_check(self, CTi, PKs):
+    def member_check(self, CTi):
         """
         This function check the membership of a certificate. It takes as input:
         o Membership Certificate `CTi`
-        o System public key `PKs`
+        o System public key `self.PKs`
 
         This function outputs either Yes for access granted, or Access Denied to
         terminate the protocol.
         """
-        pass
+        X = self.PKs['X']
+        Y = self.PKs['Y']
+        g = self.PKs['g']
+        group = self.PKs['group']
+
+        member = pair(CTi['ai'], Y) == pair(g, CTi['bi']) and \
+            pair(X, CTi['ai']) * pair(X, CTi['bi']) ** hash_Zn(CTi['IDi'], group) == pair(g, CTi['ci'])
+        
+        return member
 
     def _test(self, TLp: List[pairing.pc_element], IL: List[pairing.pc_element]) -> bool:
         """
@@ -456,6 +472,7 @@ def test_index_trapdoor_test():
     c = Consultant(τ=512)
     client = Client(c.PKs, c.SKg)
     server = Server(c.PKs)
+    c.add_server(server)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
     il = client._build_index(word_list)
     query = word_list[3:4]
@@ -468,6 +485,9 @@ def test_index_trapdoor_test():
 
 def test_group_auth():
     c = Consultant(τ=512)
+    server = Server(c.PKs)
+    c.add_server(server)
+
     c.group_auth(
         set([Client(c.PKs, c.SKg) for _ in range(3)])
     )
@@ -475,6 +495,9 @@ def test_group_auth():
 
 def test_member_join():
     c = Consultant(τ=512)
+    server = Server(c.PKs)
+    c.add_server(server)
+
     c.group_auth(
         set([Client(c.PKs, c.SKg) for _ in range(3)])
     )
@@ -485,6 +508,9 @@ def test_member_join():
 
 def test_member_leave():
     c = Consultant(τ=512)
+    server = Server(c.PKs)
+    c.add_server(server)
+
     c.group_auth(
         set([Client(c.PKs, c.SKg) for _ in range(3)])
     )
@@ -507,6 +533,33 @@ def test_data_encrypt():
     client.data_encrypt(R, IR)
 
 
+def test_member_check():
+    c = Consultant(τ=512)
+    clients = [Client(c.PKs, c.SKg) for _ in range(5)]
+    server = Server(c.PKs)
+    c.add_server(server)
+
+    c.group_auth(
+        set(clients[:3])
+    )
+    
+    assert server.member_check(clients[0].CTi), "Client 0 should be member!"
+
+    c.member_join(
+        set(clients[3:5])
+    )
+
+    assert not server.member_check(clients[2].CTi), "Client 2 should be member!"
+    assert not server.member_check(clients[4].CTi), "Client 4 should be member!"
+
+    to_leave = list(c.G)[2:4]
+    c.member_leave(
+        set(to_leave)
+    )
+
+    assert not server.member_check(clients[2].CTi), "Client 2 should not be member!"
+
+
 def run_test(test: Callable[[], None]):
     from time import time
 
@@ -523,3 +576,4 @@ if __name__ == "__main__":
     run_test(test_member_join)
     run_test(test_member_leave)
     run_test(test_data_encrypt)
+    run_test(test_member_check)
