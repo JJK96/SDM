@@ -108,7 +108,7 @@ class Client:
 
         Er = (U, V, Ed)
         # Upload E(R) and Ir to the server; print for now
-        self.server.add_file(IR, Er)
+        return IR, Er
 
     ###
     #  /DataGen
@@ -578,7 +578,8 @@ def test_data_encrypt():
 
     D = read_file("documents/client0/doc0.txt")
     IR, R, Ed = client.index_gen(D)
-    client.data_encrypt(R, IR, Ed)
+    Ir, Er = client.data_encrypt(R, IR, Ed)
+    client.server.add_file(IR, Er)
 
 
 def test_member_check():
@@ -621,7 +622,8 @@ def test_search_index():
     for _ in range(5):
         D = read_file("documents/client0/doc0.txt")
         IR, R, Ed = clients[0].index_gen(D)
-        clients[0].data_encrypt(R, IR, Ed)
+        Ir, Er = clients[0].data_encrypt(R, IR, Ed)
+        clients[0].server.add_file(IR, Er)
     
     trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
     search_results = server.search_index(trapdoor, clients[2].CTi)
@@ -650,7 +652,8 @@ def test_datadcrypt():
         D = read_file("documents/client0/doc0.txt")
         IR, R, Ed = clients[0].index_gen(D)
         Rs.append(R)
-        clients[0].data_encrypt(R, IR, Ed)
+        Ir, Er = clients[0].data_encrypt(R, IR, Ed)
+        clients[0].server.add_file(IR, Er)
     
     trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
     search_results = server.search_index(trapdoor, clients[2].CTi)
