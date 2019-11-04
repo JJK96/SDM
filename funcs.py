@@ -3,13 +3,14 @@ import charm.core.math.pairing as pairing
 from charm.toolbox.pairinggroup import PairingGroup, ZR, H, hashPair
 import hashlib
 import math
-from typing import SupportsFloat, List
+from typing import SupportsFloat, List, Union
 from keywords import keywords
 
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
-from Crypto.Hash import SHA256
+from Crypto.Hash import SHA512
 from Crypto.Signature import DSS
+from Crypto.PublicKey import ECC
 
 def num_Zn_star(n, fun, *args):
     """
@@ -137,14 +138,34 @@ def decrypt_document(key: bytes, ciphertext: bytes) -> str:
     return doc_raw.decode('utf-8')
 
 
-def sign_message(key, message: bytes) -> bytes:
-    h = SHA256.new(message)
+def gen_signing_key() -> ECC.EccKey:
+    return ECC.generate(curve='secp521r1')
+
+
+def trapdoor_to_bytes(trapdoor: List[pairing.pc_element]) -> bytes:
+    assert len(trapdoor) > 0
+
+    serialized = pairing.serialize(trapdoor[0])
+    for t in trapdoor[1:]:
+        serialized = serialized + pairing.serialize(t)
+    
+    return serialized
+
+
+def sign_message(key, message: Union[bytes, List[pairing.pc_element]]) -> bytes:
+    if isinstance(message, list):
+        message = trapdoor_to_bytes(message)
+
+    h = SHA512.new(message)
     signer = DSS.new(key, 'fips-186-3')
     return signer.sign(h)
 
 
-def verify_message(pubkey, message: bytes, signature: bytes) -> bool:
-    h = SHA256.new(message)
+def verify_message(pubkey, message: Union[bytes, List[pairing.pc_element]], signature: bytes) -> bool:
+    if isinstance(message, list):
+        message = trapdoor_to_bytes(message)
+        
+    h = SHA512.new(message)
     verifier = DSS.new(pubkey, 'fips-186-3')
     try:
         verifier.verify(h, signature)
