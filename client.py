@@ -108,7 +108,7 @@ class Client:
 
         Er = (U, V, Ed)
         # Upload E(R) and Ir to the server; print for now
-        self.server.add_file(IR, Er)
+        return IR, Er
 
     ###
     #  /DataGen
@@ -178,7 +178,7 @@ class Client:
         group = self.PKs['group']
         q = self.PKs['q']
         
-        U, V, Ed = Er
+        U, _V, _Ed = Er
 
         μ = num_Zn_star_not_one(q, group.random, ZR)
         ν = ~μ
@@ -240,3 +240,4 @@ class Client:
 
         IL = [g ** (rs * i) for i in polynomial_coefficients]
         return IL
+
