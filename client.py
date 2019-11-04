@@ -7,29 +7,39 @@ from numpy.polynomial.polynomial import polyfromroots
 import numpy as np
 import uuid
 import os
+import rpyc
+from rpyc.utils.server import ThreadedServer
+import time
+import threading
+
 
 # DEBUG
 import code
 from charm.toolbox.pairingcurves import params as param_info  # dictionary with possible pairing param_id
 
 
-class Client:
+class Client(rpyc.Service):
     """
     This is the client
     """
 
-    def __init__(self, PKs, SKg, server):
+    def __init__(self, PKs, client_port, server_address, server_port, consultant_address, consultant_port):
         self.PKs = PKs
-        self.SKg = SKg
         self.id = uuid.uuid4().int
-        self.server = server
+        self.port = client_port
+        self.server_address = server_address
+        self.server_port = server_port
+        self.consultant_address = consultant_address
+        self.consultant_port = consultant_port
     
-    def add_certificate(self, CTi: Dict[str, pairing.pc_element]):
+    def exposed_add_certificate(self, CTi: Dict[str, pairing.pc_element]):
+        print("add cert called")
         assert not hasattr(self, "CTi"), "Client already has a certificate!"
 
+        
         self.CTi = CTi
 
-    def update_certificate(self, t: pairing.pc_element):
+    def exposed_update_certificate(self, t: pairing.pc_element):
         assert hasattr(self, "CTi"), "Client has no certificate to update!"
 
         ## Step 1
@@ -54,6 +64,8 @@ class Client:
         """
         SKg = self.SKg
         PKs = self.PKs
+        print('--------')
+        print(PKs['group'])
         α = SKg['α']
 
         roots = []
@@ -212,18 +224,6 @@ class Client:
     #  /DataDcrypt
     ###
 
-    def send_file(self, file):
-        pass
-
-    def get_file(self, CTi, PKs, TLp):
-        pass
-
-    def get_decryption_key(self, Up, CTi):
-        pass
-
-    def mem_decrypt(self, C, D, PKs, SKg, v):
-        pass
-
     def build_index(self, L):
         SKg = self.SKg
         α = SKg['α']
@@ -233,7 +233,7 @@ class Client:
             roots.append(α * hash_Zn(keywords[word], self.PKs['group']))
 
         polynomial_coefficients = list(polyfromroots(roots))
-
+        
         rs = num_Zn_star_not_one(self.PKs['q'], self.PKs['group'].random, ZR)
 
         g = self.PKs['g']
@@ -241,3 +241,53 @@ class Client:
         IL = [g ** (rs * i) for i in polynomial_coefficients]
         return IL
 
+
+    def upload_file(self, file_location):
+        assert hasattr(self, "CTi"), "Client needs a certificate!"
+        Rs = [] 
+        D = read_file(file_location)
+        print('-------------upload----------')
+        print(self.PKs['group'])
+        IR, R, Ed = self.index_gen(D)
+        Rs.append(R)
+        Ir, Er = self.data_encrypt(R, IR, Ed)
+        server = rpyc.connect(self.server_address,self.server_port)
+        server.root.add_file(IR, Er)
+
+    
+    def get_files_by_keywords(self, keywords):
+        assert hasattr(self, "CTi"), "Client needs a certificate!"
+        files = []
+        trapdoor = self.make_trapdoor(keywords)
+        server = rpyc.connect(self.server_address,self.server_port)
+        search_results = server.root.search_index(trapdoor, self.CTi)
+        consultant = rpyc.connect(self.consultant_address,self.consultant_port)
+        for i, result in enumerate(search_results):
+            Up, ν = self.data_aux(result, clients[2].CTi)
+            D = consultant.root.get_decryption_key(Up, clients[2].CTi)
+            Rp, Ed = self.member_decrypt(result, D, ν)
+            files.append(decrypt_document(Rp, Ed))
+        return files
+
+    
+    def join_consultant(self):
+        assert not hasattr(self, "CTi"), "Client already has a certificate!"
+        consultant = rpyc.connect(self.consultant_address,self.consultant_port)
+        self.SKg = consultant.root.join(self.port, self.id)
+
+if __name__ == "__main__":
+    consultant = rpyc.connect("130.89.180.57", 8001)
+    PKs = consultant.root.get_public_parameters()
+    print(PKs)
+    print("creating client")
+    client = Client(PKs, 8002, "130.89.233.234", 8000, "130.89.180.57", 8001)
+    t = ThreadedServer(client, port=8002)
+    thread = threading.Thread(target=t.start)
+    thread.start()
+    print("joining:")
+    client.join_consultant()
+    print("skg: " + str(client.SKg))
+    while not hasattr(client, "CTi"):
+        time.sleep(1)
+    print("uploading file")
+    client.upload_file("test.txt")
