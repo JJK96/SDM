@@ -8,6 +8,8 @@ from keywords import keywords
 
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+from Crypto.Signature import DSS
 
 def num_Zn_star(n, fun, *args):
     """
@@ -133,6 +135,22 @@ def decrypt_document(key: bytes, ciphertext: bytes) -> str:
     doc_raw = cipher.decrypt_and_verify(ciphertext, tag)
 
     return doc_raw.decode('utf-8')
+
+
+def sign_message(key, message: bytes) -> bytes:
+    h = SHA256.new(message)
+    signer = DSS.new(key, 'fips-186-3')
+    return signer.sign(h)
+
+
+def verify_message(pubkey, message: bytes, signature: bytes) -> bool:
+    h = SHA256.new(message)
+    verifier = DSS.new(pubkey, 'fips-186-3')
+    try:
+        verifier.verify(h, signature)
+        return True
+    except ValueError:
+        return False
 
 
 if __name__ == '__main__':
