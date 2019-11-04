@@ -8,6 +8,8 @@ import numpy as np
 import uuid
 import os
 
+from Crypto.PublicKey import ECC
+
 # DEBUG
 import code
 from charm.toolbox.pairingcurves import params as param_info  # dictionary with possible pairing param_id
@@ -23,6 +25,7 @@ class Client:
         self.SKg = SKg
         self.id = uuid.uuid4().int
         self.server = server
+        self.signingkey = gen_signing_key()
     
     def add_certificate(self, CTi: Dict[str, pairing.pc_element]):
         assert not hasattr(self, "CTi"), "Client already has a certificate!"
@@ -250,6 +253,7 @@ class Consultant(Client):
     def __init__(self, τ):
         self.τ = τ
         self.system_setup(τ)
+        super().__init__(self.PKs, self.SKg, None)
     
     def add_server(self, server):
         self.server = server
@@ -304,6 +308,8 @@ class Consultant(Client):
 
             CTi = {'IDi': member.id, 'ai': ai, 'bi': bi, 'ci': ci}
             member.add_certificate(CTi)
+
+            self.server.add_client_public_key(member.id, member.signingkey.public_key())
         
         # Save the members that are authenticated for later use
         self.G = G
@@ -346,6 +352,7 @@ class Consultant(Client):
 
             CTi = {'IDi': member.id, 'ai': ai, 'bi': bi, 'ci': ci}
             new_member.add_certificate(CTi)
+            self.server.add_client_public_key(new_member.id, new_member.signingkey.public_key())
         
         # Add the new members to the member group
         self.G.update(Ms)
@@ -433,21 +440,36 @@ class Server:
     This is the server (honest but curious)
     """
 
-    def __init__(self, _PKs):
+    def __init__(self, _PKs, server_id, server_public_key):
         """
         Initialize the server class with arguments ...
         """
         self.PKs = _PKs
         self.documents = []
+
+        self.server_id = server_id
+        self.server_public_key = server_public_key
+
+        self.client_public_keys = dict()
+    
+    def add_client_public_key(self, client_id: int, pubkey: ECC.EccKey):
+        self.client_public_keys[client_id] = pubkey
     
     def update_public_key(self, t):
         self.PKs['X'] = self.PKs['X'] ** t
 
-    def add_file(self, IR, file):
+    def add_file(self, IR, file, client_id, signature):
         """
         Add a client-generated index and encrypted file to the server
         """
-        self.documents.append((IR, file))
+        _U, _V, Ed = file
+        if client_id in self.client_public_keys and \
+                (verify_message(self.client_public_keys[client_id], Ed, signature) or \
+                 verify_message(self.server_public_key, Ed, signature)):
+            self.documents.append((IR, file, client_id))
+        else:
+            # Either the client_id is not in the dictionary, or the signature is invalid
+            print("Uh oh")
 
     ###
     #  DataQuery
@@ -487,7 +509,7 @@ class Server:
         V = PKs['group'].pair_prod(TLp, IL)
         return V == PKs['group'].init(GT, 1)
 
-    def search_index(self, TLp: List[pairing.pc_element], CTi):
+    def search_index(self, TLp: List[pairing.pc_element], CTi, signature):
         """
         Scan all secure indexes against the trapdoor. It takes as input:
         o Trapdoor `TLp`
@@ -501,8 +523,10 @@ class Server:
         if self.member_check(CTi):
             result = []
 
-            for IR, file in self.documents:
-                if self._test(TLp, IR):
+            for IR, file, client_id in self.documents:
+                if ((client_id == CTi['IDi'] and verify_message(self.client_public_keys[CTi['IDi']], TLp, signature)) or \
+                    verify_message(self.server_public_key, TLp, signature)) and \
+                    self._test(TLp, IR):
                     result.append(file)
             
             return result
@@ -516,7 +540,7 @@ class Server:
 
 def test_index_trapdoor_test():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
     client = Client(c.PKs, c.SKg, server)
     word_list = ['gold', 'possible', 'plane', 'stead', 'dry', 'brought', 'heat', 'among', 'grand', 'ball']
@@ -531,7 +555,7 @@ def test_index_trapdoor_test():
 
 def test_group_auth():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
 
     c.group_auth(
@@ -541,7 +565,7 @@ def test_group_auth():
 
 def test_member_join():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
 
     c.group_auth(
@@ -554,7 +578,7 @@ def test_member_join():
 
 def test_member_leave():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
 
     c.group_auth(
@@ -572,19 +596,22 @@ def test_member_leave():
 
 def test_data_encrypt():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
     client = Client(c.PKs, c.SKg, server)
+    c.group_auth(
+        set([client])
+    )
 
     D = read_file("documents/client0/doc0.txt")
     IR, R, Ed = client.index_gen(D)
     Ir, Er = client.data_encrypt(R, IR, Ed)
-    client.server.add_file(IR, Er)
+    server.add_file(IR, Er, client.CTi['IDi'], sign_message(client.signingkey, Ed))
 
 
 def test_member_check():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
     clients = [Client(c.PKs, c.SKg, server) for _ in range(5)]
 
@@ -611,9 +638,9 @@ def test_member_check():
 
 def test_search_index():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
-    clients = [Client(c.PKs, c.SKg, server) for _ in range(5)]
+    clients = [c] + [Client(c.PKs, c.SKg, server) for _ in range(5)]
 
     c.group_auth(
         set(clients[:3])
@@ -621,24 +648,40 @@ def test_search_index():
 
     for _ in range(5):
         D = read_file("documents/client0/doc0.txt")
-        IR, R, Ed = clients[0].index_gen(D)
-        Ir, Er = clients[0].data_encrypt(R, IR, Ed)
-        clients[0].server.add_file(IR, Er)
+        IR, R, Ed = clients[1].index_gen(D)
+        Ir, Er = clients[1].data_encrypt(R, IR, Ed)
+        server.add_file(IR, Er, clients[1].CTi['IDi'], sign_message(clients[1].signingkey, Ed))
     
-    trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
-    search_results = server.search_index(trapdoor, clients[2].CTi)
+    for _ in range(3):
+        D = read_file("documents/client0/doc0.txt")
+        IR, R, Ed = clients[2].index_gen(D)
+        Ir, Er = clients[2].data_encrypt(R, IR, Ed)
+        server.add_file(IR, Er, clients[2].CTi['IDi'], sign_message(clients[2].signingkey, Ed))
+    
+    trapdoor = clients[1].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
+    search_results = server.search_index(trapdoor, clients[1].CTi, sign_message(clients[1].signingkey, trapdoor))
 
     assert len(search_results) == 5, "Did not get 5 documents returned!"
 
+    trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
+    search_results = server.search_index(trapdoor, clients[2].CTi, sign_message(clients[2].signingkey, trapdoor))
+
+    assert len(search_results) == 3, "Got results when we should not have!"
+
     trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'test'])
-    search_results = server.search_index(trapdoor, clients[2].CTi)
+    search_results = server.search_index(trapdoor, clients[2].CTi, sign_message(clients[2].signingkey, trapdoor))
 
     assert len(search_results) == 0, "Got results when we should not have!"
+
+    trapdoor = c.make_trapdoor(['gold', 'dry', 'stead', 'heat'])
+    search_results = server.search_index(trapdoor, c.CTi, sign_message(c.signingkey, trapdoor))
+
+    assert len(search_results) == 8, "Did not get 8 documents returned!"
 
 
 def test_datadcrypt():
     c = Consultant(τ=512)
-    server = Server(c.PKs)
+    server = Server(c.PKs, c.id, c.signingkey.public_key())
     c.add_server(server)
     clients = [Client(c.PKs, c.SKg, server) for _ in range(5)]
 
@@ -653,10 +696,10 @@ def test_datadcrypt():
         IR, R, Ed = clients[0].index_gen(D)
         Rs.append(R)
         Ir, Er = clients[0].data_encrypt(R, IR, Ed)
-        clients[0].server.add_file(IR, Er)
+        server.add_file(IR, Er, clients[0].CTi['IDi'], sign_message(clients[0].signingkey, Ed))
     
     trapdoor = clients[2].make_trapdoor(['gold', 'dry', 'stead', 'heat'])
-    search_results = server.search_index(trapdoor, clients[2].CTi)
+    search_results = server.search_index(trapdoor, clients[2].CTi, sign_message(clients[2].signingkey, trapdoor))
 
     for i, result in enumerate(search_results):
         Up, ν = clients[2].data_aux(result, clients[2].CTi)
