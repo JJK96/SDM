@@ -1,11 +1,12 @@
 import os
 
 import rpyc
-from charm.toolbox.pairinggroup import GT, pair
+from charm.toolbox.pairinggroup import GT, pair, G1
 from charm.core.math.pairing import serialize, deserialize
 
 from funcs import *
 from rpyc.utils.server import ThreadedServer # or ForkingServer
+import config
 
 
 file_directory = 'documents'
@@ -31,8 +32,10 @@ class Server(rpyc.Service):
 
     def exposed_update_public_key(self, t):
         try:
-            self.PKs['X'] = self.PKs['X'] ** t
+            self.PKs['X'] = self.PKs['X'] ** self.PKs['group'].deserialize(t)
+            print('works')
         except Exception as e:
+            print("exception")
             print(e)
 
     def exposed_add_file(self, IR, file):
@@ -106,9 +109,10 @@ class Server(rpyc.Service):
 
 
 if __name__ == '__main__':
-    consultant = rpyc.connect('130.89.180.57', 8001)
+    consultant = rpyc.connect('localhost', 8001, config=config.config)
     PKs = consultant.root.get_public_parameters()
     # consultant.close()
     print(PKs)
-    server = ThreadedServer(Server(PKs), port=8000)
+    PKs['X'] = PKs['group'].deserialize(PKs['X'])
+    server = ThreadedServer(Server(PKs), port=8000, protocol_config=config.config)
     server.start()

@@ -1,26 +1,24 @@
 from typing import List, Dict, Set, Tuple, Callable
-import rpyc
-from rpyc.utils.server import ThreadedServer # or ForkingServer
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, pair
 from funcs import *
 from client import Client
+import rpyc
+from rpyc.utils.server import ThreadedServer
 from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.server import SimpleXMLRPCRequestHandler
 from socket import socket
 import traceback
+import config
 
 #DEBUG
 import code
-
-SERVER_IP = '130.89.233.234'
-SERVER_PORT = 8000
 
 class ConsultantClient():
     def __init__(self, ip, port, id):
         self.ip = ip
         self.port = port
         self.id = id
-        self.conn = rpyc.connect(ip, port)
+        self.conn = rpyc.connect(ip, port, config=config.config)
 
 class Consultant(Client):
     """ 
@@ -32,7 +30,7 @@ class Consultant(Client):
         self.system_setup(τ)
  
     def connect_server(self):
-        self.server = rpyc.connect(SERVER_IP, SERVER_PORT)
+        self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
 
     def system_setup(self, τ):
         """
@@ -119,7 +117,7 @@ class Consultant(Client):
             member.conn.root.update_certificate(t)
         if not hasattr(self, 'server'):
             self.connect_server()
-        self.server.root.update_public_key(t)
+        self.server.root.update_public_key(group.serialize(t))
 
         ## Step 2
         for new_member in Ms:
@@ -222,6 +220,7 @@ class ConsultantServer(rpyc.Service):
 
     def exposed_get_public_parameters(self):
         PKs = self.consultant.PKs
+        PKs['X'] = PKs['group'].serialize(PKs['X'])
         return PKs
 
     def exposed_join(self, port, id):
@@ -237,5 +236,5 @@ class ConsultantServer(rpyc.Service):
 
 
 if __name__ == "__main__":
-    server = ThreadedServer(ConsultantServer, port = 8001)
+    server = ThreadedServer(ConsultantServer, port = 8001, protocol_config=config.config)
     server.start()

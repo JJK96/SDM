@@ -11,6 +11,7 @@ import rpyc
 from rpyc.utils.server import ThreadedServer
 import time
 import threading
+import config
 
 
 # DEBUG
@@ -251,7 +252,7 @@ class Client(rpyc.Service):
         IR, R, Ed = self.index_gen(D)
         Rs.append(R)
         Ir, Er = self.data_encrypt(R, IR, Ed)
-        server = rpyc.connect(self.server_address,self.server_port)
+        server = rpyc.connect(self.server_address,self.server_port, config=config.config)
         server.root.add_file(IR, Er)
 
     
@@ -259,9 +260,9 @@ class Client(rpyc.Service):
         assert hasattr(self, "CTi"), "Client needs a certificate!"
         files = []
         trapdoor = self.make_trapdoor(keywords)
-        server = rpyc.connect(self.server_address,self.server_port)
+        server = rpyc.connect(self.server_address,self.server_port, config = config.config)
         search_results = server.root.search_index(trapdoor, self.CTi)
-        consultant = rpyc.connect(self.consultant_address,self.consultant_port)
+        consultant = rpyc.connect(self.consultant_address,self.consultant_port, config=config.config)
         for i, result in enumerate(search_results):
             Up, ν = self.data_aux(result, clients[2].CTi)
             D = consultant.root.get_decryption_key(Up, clients[2].CTi)
@@ -272,16 +273,16 @@ class Client(rpyc.Service):
     
     def join_consultant(self):
         assert not hasattr(self, "CTi"), "Client already has a certificate!"
-        consultant = rpyc.connect(self.consultant_address,self.consultant_port)
+        consultant = rpyc.connect(self.consultant_address,self.consultant_port, config=config.config)
         self.SKg = consultant.root.join(self.port, self.id)
 
 if __name__ == "__main__":
-    consultant = rpyc.connect("130.89.180.57", 8001)
+    consultant = rpyc.connect("localhost", 8001, config=config.config)
     PKs = consultant.root.get_public_parameters()
     print(PKs)
     print("creating client")
-    client = Client(PKs, 8002, "130.89.233.234", 8000, "130.89.180.57", 8001)
-    t = ThreadedServer(client, port=8002)
+    client = Client(PKs, 8002, "localhost", 8000, "localhost", 8001)
+    t = ThreadedServer(client, port=8002, protocol_config=config.config)
     thread = threading.Thread(target=t.start)
     thread.start()
     print("joining:")
