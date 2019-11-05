@@ -21,3 +21,14 @@ def deserialize_SKg(SKg, PKs):
     for k in ['α', 'P', 'Pp', 'Q', 'Qp']:
         SKg[k] = PKs['group'].deserialize(SKg[k])
     return SKg
+
+def serialize_CTi(CTi, PKs):
+    CTi = copy.copy(CTi)
+    for k in ['ai', 'bi', 'ci']:
+        CTi[k] = PKs['group'].serialize(CTi[k])
+    return CTi
+
+def deserialize_CTi(CTi, PKs):
+    for k in ['ai', 'bi', 'ci']:
+        CTi[k] = PKs['group'].deserialize(CTi[k])
+    return CTi
