@@ -12,6 +12,7 @@ from rpyc.utils.server import ThreadedServer
 import time
 import threading
 import config
+from serialization import *
 
 
 # DEBUG
@@ -24,14 +25,12 @@ class Client(rpyc.Service):
     This is the client
     """
 
-    def __init__(self, PKs, client_port, server_address, server_port, consultant_address, consultant_port):
+    def __init__(self, PKs, client_port, consultant, server):
         self.PKs = PKs
         self.id = uuid.uuid4().int
         self.port = client_port
-        self.server_address = server_address
-        self.server_port = server_port
-        self.consultant_address = consultant_address
-        self.consultant_port = consultant_port
+        self.consultant = consultant
+        self.server = server
     
     def exposed_add_certificate(self, CTi: Dict[str, pairing.pc_element]):
         print("add cert called")
@@ -65,8 +64,6 @@ class Client(rpyc.Service):
         """
         SKg = self.SKg
         PKs = self.PKs
-        print('--------')
-        print(PKs['group'])
         α = SKg['α']
 
         roots = []
@@ -247,25 +244,27 @@ class Client(rpyc.Service):
         assert hasattr(self, "CTi"), "Client needs a certificate!"
         Rs = [] 
         D = read_file(file_location)
-        print('-------------upload----------')
-        print(self.PKs['group'])
         IR, R, Ed = self.index_gen(D)
         Rs.append(R)
-        Ir, Er = self.data_encrypt(R, IR, Ed)
-        server = rpyc.connect(self.server_address,self.server_port, config=config.config)
-        server.root.add_file(IR, Er)
+        Ir, (U, V, Ed) = self.data_encrypt(R, IR, Ed)
+        IrSerialized = [self.PKs['group'].serialize(x) for x in Ir]
+        Er = (self.PKs['group'].serialize(U), V, Ed)
+        self.server.root.add_file(IrSerialized, Er)
 
     
     def get_files_by_keywords(self, keywords):
         assert hasattr(self, "CTi"), "Client needs a certificate!"
         files = []
+        group = self.PKs['group']
         trapdoor = self.make_trapdoor(keywords)
-        server = rpyc.connect(self.server_address,self.server_port, config = config.config)
-        search_results = server.root.search_index(trapdoor, self.CTi)
-        consultant = rpyc.connect(self.consultant_address,self.consultant_port, config=config.config)
+        serialized_trapdoor = [group.serialize(x) for x in trapdoor]
+        print("A")
+        CTi_serialized = serialize_CTi(self.CTi, self.PKs)
+        print("B")
+        search_results = self.server.root.search_index(serialized_trapdoor, CTi_serialized)
         for i, result in enumerate(search_results):
-            Up, ν = self.data_aux(result, clients[2].CTi)
-            D = consultant.root.get_decryption_key(Up, clients[2].CTi)
+            Up, ν = self.data_aux(result, self.CTi)
+            D = group.deserialize(self.consultant.root.get_decryption_key(group.serialize(Up), CTi_serialized))
             Rp, Ed = self.member_decrypt(result, D, ν)
             files.append(decrypt_document(Rp, Ed))
         return files
@@ -273,15 +272,14 @@ class Client(rpyc.Service):
     
     def join_consultant(self):
         assert not hasattr(self, "CTi"), "Client already has a certificate!"
-        consultant = rpyc.connect(self.consultant_address,self.consultant_port, config=config.config)
-        self.SKg = consultant.root.join(self.port, self.id)
+        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id), self.PKs)
 
 if __name__ == "__main__":
-    consultant = rpyc.connect("localhost", 8001, config=config.config)
+    consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
+    server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
     PKs = consultant.root.get_public_parameters()
-    print(PKs)
-    print("creating client")
-    client = Client(PKs, 8002, "localhost", 8000, "localhost", 8001)
+    PKs = deserialize_PKs(PKs)
+    client = Client(PKs, 8002, consultant, server)
     t = ThreadedServer(client, port=8002, protocol_config=config.config)
     thread = threading.Thread(target=t.start)
     thread.start()
@@ -292,3 +290,5 @@ if __name__ == "__main__":
         time.sleep(1)
     print("uploading file")
     client.upload_file("test.txt")
+    print("DONE BITCHES")
+    print(client.get_files_by_keywords(["from"]))
