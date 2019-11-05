@@ -1,12 +1,17 @@
+import os
+
+import rpyc
 from charm.toolbox.pairinggroup import GT, pair
+from charm.core.math.pairing import serialize, deserialize
 
 from funcs import *
-from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.server import SimpleXMLRPCRequestHandler
-from xmlrpc.client import ServerProxy
+from rpyc.utils.server import ThreadedServer # or ForkingServer
 
 
-class Server:
+file_directory = 'documents'
+
+
+class Server(rpyc.Service):
     """
     This is the server (honest but curious)
     """
@@ -17,15 +22,26 @@ class Server:
         """
         self.PKs = _PKs
         self.documents = []
+        self._create_documents_folder()
 
-    def update_public_key(self, t):
-        self.PKs['X'] = self.PKs['X'] ** t
+    @staticmethod
+    def _create_documents_folder():
+        if not os.path.exists(file_directory):
+            os.makedirs(file_directory)
 
-    def add_file(self, IR, file):
+    def exposed_update_public_key(self, t):
+        try:
+            self.PKs['X'] = self.PKs['X'] ** t
+        except Exception as e:
+            print(e)
+
+    def exposed_add_file(self, IR, file):
         """
         Add a client-generated index and encrypted file to the server
         """
+
         self.documents.append((IR, file))
+
 
     ###
     #  DataQuery
@@ -65,7 +81,7 @@ class Server:
         V = PKs['group'].pair_prod(TLp, IL)
         return V == PKs['group'].init(GT, 1)
 
-    def search_index(self, TLp: List[pairing.pc_element], CTi):
+    def exposed_search_index(self, TLp: List[pairing.pc_element], CTi):
         """
         Scan all secure indexes against the trapdoor. It takes as input:
         o Trapdoor `TLp`
@@ -90,10 +106,9 @@ class Server:
 
 
 if __name__ == '__main__':
-    consultant = ServerProxy("http://130.89.180.57:8001/")
-    PKs = consultant.get_public_parameters()
+    consultant = rpyc.connect('130.89.180.57', 8001)
+    PKs = consultant.root.get_public_parameters()
+    # consultant.close()
     print(PKs)
-    server = SimpleXMLRPCServer(('localhost', 8000), requestHandler=SimpleXMLRPCRequestHandler)
-    server.register_instance(Server(PKs))
-    print("Started serving my functions baby")
-    server.serve_forever()
+    server = ThreadedServer(Server(PKs), port=8000)
+    server.start()
