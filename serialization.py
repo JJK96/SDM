@@ -1,3 +1,5 @@
+import copy
+
 def serialize_PKs(PKs):
     PKs = copy.copy(PKs)
     for k in ['g', 'X', 'Y']:
