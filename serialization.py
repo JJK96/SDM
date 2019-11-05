@@ -1,4 +1,5 @@
 import copy
+from charm.toolbox.pairinggroup import PairingGroup
 
 def serialize_PKs(PKs):
     PKs = copy.copy(PKs)
@@ -7,6 +8,7 @@ def serialize_PKs(PKs):
     return PKs
 
 def deserialize_PKs(PKs):
+    PKs['group'] = PairingGroup(PKs['curve'], secparam=PKs['secparam'])
     for k in ['g', 'X', 'Y']:
         PKs[k] = PKs['group'].deserialize(PKs[k])
     return PKs
