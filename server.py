@@ -34,7 +34,9 @@ class Server(rpyc.Service):
 
     def exposed_update_public_key(self, t):
         try:
-            self.PKs['X'] = self.PKs['X'] ** self.PKs['group'].deserialize(t)
+            t = self.PKs['group'].deserialize(t)
+            print(type(t))
+            self.PKs['X'] = self.PKs['X'] ** t
             print('works')
         except Exception as e:
             print("exception")

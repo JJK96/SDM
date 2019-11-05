@@ -9,6 +9,7 @@ import uuid
 import os
 import rpyc
 from rpyc.utils.server import ThreadedServer
+import pickle
 import time
 import threading
 import config
@@ -19,51 +20,50 @@ from serialization import *
 import code
 from charm.toolbox.pairingcurves import params as param_info  # dictionary with possible pairing param_id
 
+CTi = None
+PKs = None
 
-class Client(rpyc.Service):
+class ClientServer(rpyc.Service):
+    def exposed_add_certificate(self, _CTi):
+        global CTi, PKs
+        CTi = deserialize_CTi(_CTi, PKs)
+
+    def exposed_update_certificate(self, t: pairing.pc_element):
+        global CTi, PKs
+        assert CTi is not None, "Client has no certificate to update!"
+
+        ## Step 1
+        PKs['X'] = PKs['X'] ** t
+
+        ## Step 3
+        CTi['ci'] = CTi['ci'] ** t
+
+class Client():
     """
     This is the client
     """
 
-    def __init__(self, PKs, client_port, consultant, server):
-        self.PKs = PKs
+    def __init__(self, client_port, consultant, server):
         self.id = uuid.uuid4().int
         self.port = client_port
         self.consultant = consultant
         self.server = server
     
-    def exposed_add_certificate(self, CTi: Dict[str, pairing.pc_element]):
-        print("add cert called")
-        assert not hasattr(self, "CTi"), "Client already has a certificate!"
-
-        
-        self.CTi = CTi
-
-    def exposed_update_certificate(self, t: pairing.pc_element):
-        assert hasattr(self, "CTi"), "Client has no certificate to update!"
-
-        ## Step 1
-        self.PKs['X'] = self.PKs['X'] ** t
-
-        ## Step 3
-        self.CTi['ci'] = self.CTi['ci'] ** t
-
-
     ###
     #  DataGen
     #  Builds searchable encrypted data that are uploaded to the server.
     ###
 
     def _build_index(self, L):
+        global PKs, CTi
         """
         This function takes as input:
         o Keyword list `L`
-        o System parameter PM = {`self.PKs`, `self.SKg`}
+        o System parameter PM = {`PKs`, `self.SKg`}
 
         This function outputs secure index `IL`
         """
         SKg = self.SKg
-        PKs = self.PKs
         α = SKg['α']
 
         roots = []
@@ -80,10 +80,11 @@ class Client(rpyc.Service):
         return IL
 
     def index_gen(self, D):
+        global PKs, CTi
         """
         This function makes a secure index. It takes as input:
         o A document D
-        o System public key `self.PKs`
+        o System public key `PKs`
         o Group secret key `self.SKg`
 
         This function outputs secure index IR, document encryption key R and encrypted document Ed
@@ -95,18 +96,19 @@ class Client(rpyc.Service):
         return self._build_index(keywords), R, Ed
 
     def data_encrypt(self, R, IR, Ed):
+        global PKs, CTi
         """
         This function encrypts the data. It takes as input:
         o A data encryption key `R`
         o A encrypted data `Ed` encrypted with `R`
-        o System public key `self.PKs`
+        o System public key `PKs`
         o Group secret key `self.SKg`
         o Secure index IR corresponding to data `R`
 
         This function outputs encrypted data E(R) and uploads E(R) to the server
         """
-        group = self.PKs['group']
-        q = self.PKs['q']
+        group = PKs['group']
+        q = PKs['q']
         P = self.SKg['P']
         Q = self.SKg['Q']
         Pp = self.SKg['Pp']
@@ -130,14 +132,15 @@ class Client(rpyc.Service):
     ###
 
     def _trapdoor(self, Lp):
+        global PKs, CTi
         """
         This function takes as input:
         o Keyword list `Lp`
-        o System parameter PM = {`self.PKs`, `self.SKg`}
+        o System parameter PM = {`PKs`, `self.SKg`}
 
         This function outputs the trapdoor `TLp` of the list `Lp`
         """
-        PKs = self.PKs
+        PKs = PKs
         SKg = self.SKg
         ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
         T = []
@@ -154,6 +157,7 @@ class Client(rpyc.Service):
         return T
 
     def make_trapdoor(self, Lp: List[str]):
+        global PKs, CTi
         """
         This function is executed by a group member to make a trapdoor of a list of keywords the
         member want to search. It takes as input:
@@ -174,19 +178,20 @@ class Client(rpyc.Service):
     #  Decrypts the encrypted data
     ###
 
-    def data_aux(self, Er, CTi):
+    def data_aux(self, Er):
+        global PKs, CTi
         """
         This function is executed by a member to make an auxiliary information request associated with
         the encrypted data to the GM. It takes as input:
         o The encrypted data `E(R)`
         o The membership certificate `CTi`
-        o System public key `self.PKs`
+        o System public key `PKs`
 
         This function outputs an auxiliary infromation `(Up, CTi)` for the GM, and a one-time secret
         key `v` for the member.
         """
-        group = self.PKs['group']
-        q = self.PKs['q']
+        group = PKs['group']
+        q = PKs['q']
         
         U, _V, _Ed = Er
 
@@ -202,11 +207,12 @@ class Client(rpyc.Service):
         
 
     def member_decrypt(self, Er, D, ν):
+        global PKs, CTi
         """
         This function is executed by the member to obtain the data. It takes as input:
         o The encrypted data `E(R)`
         o The decryption key `D`
-        o System public key `self.PKs`
+        o System public key `PKs`
         o Group secret key `self.SKg`
         o Member one-time secret key `ν`
 
@@ -223,47 +229,48 @@ class Client(rpyc.Service):
     ###
 
     def build_index(self, L):
+        global PKs, CTi
         SKg = self.SKg
         α = SKg['α']
 
         roots = []
         for word in L:
-            roots.append(α * hash_Zn(keywords[word], self.PKs['group']))
+            roots.append(α * hash_Zn(keywords[word], PKs['group']))
 
         polynomial_coefficients = list(polyfromroots(roots))
         
-        rs = num_Zn_star_not_one(self.PKs['q'], self.PKs['group'].random, ZR)
+        rs = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
 
-        g = self.PKs['g']
+        g = PKs['g']
 
         IL = [g ** (rs * i) for i in polynomial_coefficients]
         return IL
 
 
     def upload_file(self, file_location):
-        assert hasattr(self, "CTi"), "Client needs a certificate!"
+        global PKs, CTi
+        assert CTi is not None, "Client needs a certificate!"
         Rs = [] 
         D = read_file(file_location)
         IR, R, Ed = self.index_gen(D)
         Rs.append(R)
         Ir, (U, V, Ed) = self.data_encrypt(R, IR, Ed)
-        IrSerialized = [self.PKs['group'].serialize(x) for x in Ir]
-        Er = (self.PKs['group'].serialize(U), V, Ed)
+        IrSerialized = [PKs['group'].serialize(x) for x in Ir]
+        Er = (PKs['group'].serialize(U), V, Ed)
         self.server.root.add_file(IrSerialized, Er)
 
     
     def get_files_by_keywords(self, keywords):
-        assert hasattr(self, "CTi"), "Client needs a certificate!"
+        global PKs, CTi
+        assert CTi is not None, "Client needs a certificate!"
         files = []
-        group = self.PKs['group']
+        group = PKs['group']
         trapdoor = self.make_trapdoor(keywords)
         serialized_trapdoor = [group.serialize(x) for x in trapdoor]
-        print("A")
-        CTi_serialized = serialize_CTi(self.CTi, self.PKs)
-        print("B")
+        CTi_serialized = serialize_CTi(CTi, PKs)
         search_results = self.server.root.search_index(serialized_trapdoor, CTi_serialized)
         for i, result in enumerate(search_results):
-            Up, ν = self.data_aux(result, self.CTi)
+            Up, ν = self.data_aux(result)
             D = group.deserialize(self.consultant.root.get_decryption_key(group.serialize(Up), CTi_serialized))
             Rp, Ed = self.member_decrypt(result, D, ν)
             files.append(decrypt_document(Rp, Ed))
@@ -271,23 +278,21 @@ class Client(rpyc.Service):
 
     
     def join_consultant(self):
-        assert not hasattr(self, "CTi"), "Client already has a certificate!"
-        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id), self.PKs)
+        global PKs, CTi
+        assert CTi is None, "Client already has a certificate!"
+        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id), PKs)
 
 if __name__ == "__main__":
     consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
     server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
-    PKs = consultant.root.get_public_parameters()
-    PKs = deserialize_PKs(PKs)
-    client = Client(PKs, 8002, consultant, server)
-    t = ThreadedServer(client, port=8002, protocol_config=config.config)
+    PKs = deserialize_PKs(consultant.root.get_public_parameters())
+    client = Client(8002, consultant, server)
+    t = ThreadedServer(ClientServer, port=8002, protocol_config=config.config)
     thread = threading.Thread(target=t.start)
     thread.start()
     print("joining:")
     client.join_consultant()
     print("skg: " + str(client.SKg))
-    while not hasattr(client, "CTi"):
-        time.sleep(1)
     print("uploading file")
     client.upload_file("test.txt")
     print("DONE BITCHES")

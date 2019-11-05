@@ -3,12 +3,14 @@ from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, pair
 from funcs import *
 from client import Client
 import rpyc
+import copy
 from rpyc.utils.server import ThreadedServer
 from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.server import SimpleXMLRPCRequestHandler
 from socket import socket
 import traceback
 import config
+from serialization import *
 
 #DEBUG
 import code
@@ -40,7 +42,8 @@ class Consultant(Client):
         This function is executed by the GM, and outputs the system public key `PKs`,
         the group secret key `SKg` for all group members and the master key MK for the GM.
         """
-        group = PairingGroup('SS512', secparam=τ)
+        curve = 'SS512'
+        group = PairingGroup(curve, secparam=τ)
         g, P, Q = [group.random(G1) for _ in range(3)]
         q = group.order()
         α, x, y, λ, σ = [num_Zn_star_not_one(q, group.random, ZR) for _ in range(5)]
@@ -48,7 +51,7 @@ class Consultant(Client):
         Y = g ** y
         Pp = P ** λ
         Qp = Q ** (λ - σ)
-        self.PKs = {'l': 11, 'group': group, 'q': q, 'g': g, 'X': X, 'Y': Y}
+        self.PKs = {'l': 11, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         # a = pair(g1**2, g2**3)
@@ -60,33 +63,6 @@ class Consultant(Client):
     #  AuthCodGen
     #  Generates the group membership certificates
     ###
-
-    def group_auth(self, G: Set[Client]):
-        """
-        This function is executed by the GM and makes the membership certificate for every member in `G`. Takes as input:
-        o Identities {ID_i }; 1 <= i <= N of all members {M_i}; 1 <= i <= N in `G`
-        o The system public key `self.PKs`
-        o The master key `self.MK`
-
-        This function outputs Membership certificates {CT_i}; 1 <= i <= N for all members
-        """
-        group = self.PKs['group']
-        x = self.MK['x']
-        y = self.MK['y']
-
-        ## Step 1
-        for member in G:
-            ai = group.random(G1)
-            bi = ai ** y
-            ci = ai ** (x + hash_Zn(member.id, group) * x * y)
-
-            CTi = {'IDi': member.id, 'ai': ai, 'bi': bi, 'ci': ci}
-            member.add_certificate(CTi)
-        
-        # Save the members that are authenticated for later use
-        self.G = G
-        
-        ## Step 2: keep CTi secret!
 
     def member_join(self, Ms: Set[ConsultantClient]):
         """
@@ -114,7 +90,7 @@ class Consultant(Client):
         t = num_Zn_star_not_one(q, group.random, ZR)
         self.PKs['X'] = X ** t
         for member in self.G:
-            member.conn.root.update_certificate(t)
+            member.conn.root.update_certificate(group.serialize(t))
         if not hasattr(self, 'server'):
             self.connect_server()
         self.server.root.update_public_key(group.serialize(t))
@@ -126,7 +102,8 @@ class Consultant(Client):
             ci = ai ** (t * (x + hash_Zn(new_member.id, group) * x * y))
 
             CTi = {'IDi': new_member.id, 'ai': ai, 'bi': bi, 'ci': ci}
-            new_member.conn.root.add_certificate(CTi)
+            print("sending CTi")
+            new_member.conn.root.add_certificate(serialize_CTi(CTi, self.PKs))
         
         # Add the new members to the member group
         self.G.update(Ms)
@@ -154,6 +131,7 @@ class Consultant(Client):
         ## Step 1
         t = num_Zn_star_not_one(q, group.random, ZR)
         self.PKs['X'] = X ** t
+        t = group.serialize(t)
         for member in self.G.difference(Ms):
             member.conn.root.update_certificate(t)
         if not hasattr(self, 'server'):
@@ -201,7 +179,7 @@ class Consultant(Client):
             D = pair(Q, Up) ** σ
             return D
         else:
-            return "Access Denied"
+            raise Exception("Access Denied")
 
     ###
     #  /DataDcrypt
@@ -219,9 +197,8 @@ class ConsultantServer(rpyc.Service):
         print(self.ip, port)
 
     def exposed_get_public_parameters(self):
-        PKs = self.consultant.PKs
-        PKs['X'] = PKs['group'].serialize(PKs['X'])
-        return PKs
+        print("get public parameters")
+        return serialize_PKs(self.consultant.PKs)
 
     def exposed_join(self, port, id):
         print("join")
@@ -230,11 +207,32 @@ class ConsultantServer(rpyc.Service):
         clients.add(client)
         try:
             self.consultant.member_join(clients)
-        except Exception as e:
-            traceback.print_tb(e.__traceback__)
-        return self.consultant.SKg
+        except Exception:
+            traceback.print_exc()
+        SKg = serialize_SKg(self.consultant.SKg, self.consultant.PKs)
+        return SKg
 
+    def exposed_leave(self, id):
+        print("leave")
+        member = None
+        for c in self.consultant.G:
+            if c.id == id:
+               member = c
+        assert not member is None
+        members = set()
+        members.add(member)
+        self.consultant.member_leave(members)
+
+    def exposed_get_decryption_key(Up, CTi):
+        print("get decryption key")
+        PKs = self.consultant.PKs
+        CTi = deserialize_CTi(CTi, PKs)
+        Up = PKs['group'].deserialize(Up)
+        D = self.consultant.get_decryption_key(Up, CTi)
+        return PKs['group'].serialize(D)
 
 if __name__ == "__main__":
     server = ThreadedServer(ConsultantServer, port = 8001, protocol_config=config.config)
-    server.start()
+    server.start() 
+# c = ConsultantServer()
+# c.exposed_get_public_parameters()

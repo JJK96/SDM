@@ -7,10 +7,13 @@ def serialize_PKs(PKs):
         PKs[k] = PKs['group'].serialize(PKs[k])
     return PKs
 
-def deserialize_PKs(PKs):
-    PKs['group'] = PairingGroup(PKs['curve'], secparam=PKs['secparam'])
+def deserialize_PKs(_PKs):
+    PKs = {}
+    PKs['group'] = PairingGroup(_PKs['curve'], secparam=_PKs['secparam'])
     for k in ['g', 'X', 'Y']:
-        PKs[k] = PKs['group'].deserialize(PKs[k])
+        PKs[k] = PKs['group'].deserialize(_PKs[k])
+    for k in ['l', 'q']:
+        PKs[k] = _PKs[k]
     return PKs
 
 def serialize_SKg(SKg, PKs):
@@ -19,9 +22,10 @@ def serialize_SKg(SKg, PKs):
         SKg[k] = PKs['group'].serialize(SKg[k])
     return SKg
 
-def deserialize_SKg(SKg, PKs):
+def deserialize_SKg(_SKg, PKs):
+    SKg = {}
     for k in ['α', 'P', 'Pp', 'Q', 'Qp']:
-        SKg[k] = PKs['group'].deserialize(SKg[k])
+        SKg[k] = PKs['group'].deserialize(_SKg[k])
     return SKg
 
 def serialize_CTi(CTi, PKs):
@@ -30,7 +34,9 @@ def serialize_CTi(CTi, PKs):
         CTi[k] = PKs['group'].serialize(CTi[k])
     return CTi
 
-def deserialize_CTi(CTi, PKs):
+def deserialize_CTi(_CTi, PKs):
+    CTi = {}
     for k in ['ai', 'bi', 'ci']:
-        CTi[k] = PKs['group'].deserialize(CTi[k])
+        CTi[k] = PKs['group'].deserialize(_CTi[k])
+    CTi['IDi'] = _CTi['IDi']
     return CTi
