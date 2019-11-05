@@ -11,5 +11,13 @@ def deserialize_PKs(PKs):
         PKs[k] = PKs['group'].deserialize(PKs[k])
     return PKs
 
-def serialize_SKg(SKg):
-    SKg = copy.copy(PKs)
+def serialize_SKg(SKg, PKs):
+    SKg = copy.copy(SKg)
+    for k in ['α', 'P', 'Pp', 'Q', 'Qp']:
+        SKg[k] = PKs['group'].serialize(SKg[k])
+    return SKg
+
+def deserialize_SKg(SKg, PKs):
+    for k in ['α', 'P', 'Pp', 'Q', 'Qp']:
+        SKg[k] = PKs['group'].deserialize(SKg[k])
+    return SKg
