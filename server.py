@@ -5,11 +5,13 @@ from charm.toolbox.pairinggroup import GT, pair, G1
 from charm.core.math.pairing import serialize, deserialize
 
 from funcs import *
-from rpyc.utils.server import ThreadedServer # or ForkingServer
+from rpyc.utils.server import ThreadedServer  # or ForkingServer
 import config
+import json
+import base64
+from serialization import *
 
-
-file_directory = 'documents'
+FILE_DIRECTORY = 'documents'
 
 
 class Server(rpyc.Service):
@@ -23,12 +25,12 @@ class Server(rpyc.Service):
         """
         self.PKs = _PKs
         self.documents = []
+        self.file_directory = FILE_DIRECTORY
         self._create_documents_folder()
 
-    @staticmethod
-    def _create_documents_folder():
-        if not os.path.exists(file_directory):
-            os.makedirs(file_directory)
+    def _create_documents_folder(self):
+        if not os.path.exists(self.file_directory):
+            os.makedirs(self.file_directory)
 
     def exposed_update_public_key(self, t):
         try:
@@ -42,9 +44,18 @@ class Server(rpyc.Service):
         """
         Add a client-generated index and encrypted file to the server
         """
+        U, V, Er = file
+        IR = [base64.b64encode(x).decode('ascii') for x in IR]
 
-        self.documents.append((IR, file))
+        file_to_save = {
+            'U': base64.b64encode(U).decode('ascii'),
+            'V': base64.b64encode(V).decode('ascii'),
+            'IR': IR,
+            'Er': base64.b64encode(Er).decode('ascii')
+        }
 
+        file_name = self.file_directory + os.path.sep + str(len(next(os.walk(FILE_DIRECTORY))[2])) + '.json'
+        json.dump(file_to_save, open(file_name, 'w'), indent=4)
 
     ###
     #  DataQuery
@@ -60,14 +71,17 @@ class Server(rpyc.Service):
         This function outputs either Yes for access granted, or Access Denied to
         terminate the protocol.
         """
+        print('started member check')
         X = self.PKs['X']
         Y = self.PKs['Y']
         g = self.PKs['g']
         group = self.PKs['group']
-
+        print('beginning pair stuff')
+        CTi = deserialize_CTi(CTi, self.PKs)
+        print('beginning pair stuffs')
         member = pair(CTi['ai'], Y) == pair(g, CTi['bi']) and \
                  pair(X, CTi['ai']) * pair(X, CTi['bi']) ** hash_Zn(CTi['IDi'], group) == pair(g, CTi['ci'])
-
+        print('ended pair stuff')
         return member
 
     def _test(self, TLp: List[pairing.pc_element], IL: List[pairing.pc_element]) -> bool:
@@ -95,10 +109,11 @@ class Server(rpyc.Service):
         the data includes the searched keywords or "No Data Matched" for
         the member when the data does not contain the keywords
         """
+        print('started search index')
         if self.member_check(CTi):
             result = []
 
-            for IR, file in self.documents:
+            for IR, file in self._load_all_ir_and_files():
                 if self._test(TLp, IR):
                     result.append(file)
 
@@ -107,12 +122,28 @@ class Server(rpyc.Service):
         else:
             return "Access Denied"
 
+    def _load_all_ir_and_files(self):
+        result = []
+        files = next(os.walk(self.file_directory))[2]
+        for file_name in files:
+            data = json.load(open(os.path.join(self.file_directory, file_name)))
+
+            IR = [base64.b64decode(x.encode('ascii')) for x in data['IR']]
+
+            U = base64.b64decode(data['U'].encode('ascii'))
+            V = base64.b64decode(data['V'].encode('ascii'))
+            Er = base64.b64decode(data['Er'].encode('ascii'))
+
+            file = (U, V, Er)
+
+            result.append((IR, file))
+
+        return result
+
 
 if __name__ == '__main__':
-    consultant = rpyc.connect('localhost', 8001, config=config.config)
+    consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
     PKs = consultant.root.get_public_parameters()
-    # consultant.close()
-    print(PKs)
-    PKs['X'] = PKs['group'].deserialize(PKs['X'])
-    server = ThreadedServer(Server(PKs), port=8000, protocol_config=config.config)
+    PKs = deserialize_PKs(PKs)
+    server = ThreadedServer(Server(PKs), port=config.SERVER_PORT, protocol_config=config.config)
     server.start()

@@ -135,6 +135,16 @@ def decrypt_document(key: bytes, ciphertext: bytes) -> str:
     return doc_raw.decode('utf-8')
 
 
+def int_to_bytes(x: int) -> bytes:
+    bytes = x.to_bytes((x.bit_length() + 7) // 8, 'big')
+    if len(bytes) < 8:
+        bytes = bytes
+    return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+
+
+def int_from_bytes(xbytes: bytes) -> int:
+    return int.from_bytes(xbytes, 'big')
+
 if __name__ == '__main__':
     print(poly_from_roots([6, 2, 3]))
     print(poly_from_roots([2, 3]))
