@@ -87,7 +87,9 @@ class Server(rpyc.Service):
         o Secure index `IL`
         o System public key PKs
         """
+
         assert len(TLp) == len(IL), "Length of trapdoor and index do not match!"
+
 
         PKs = self.PKs
 
@@ -113,7 +115,6 @@ class Server(rpyc.Service):
             for IR, file in self._load_all_ir_and_files():
                 if self._test(TLp, IR):
                     result.append(file)
-                    print(file)
 
             return result
 
@@ -143,7 +144,5 @@ if __name__ == '__main__':
     consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
     PKs = consultant.root.get_public_parameters()
     PKs = deserialize_PKs(PKs)
-    print('Y', PKs['Y'])
-    print('g', PKs['g'])
     server = ThreadedServer(Server(PKs), port=config.SERVER_PORT, protocol_config=config.config)
     server.start()

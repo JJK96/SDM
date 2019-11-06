@@ -56,9 +56,7 @@ class Consultant(Client):
         self.PKs = {'l': 11, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
-        print('doing setup')
-        print('Y', Y)
-        print('g', g)
+        self.t = 1
         # a = pair(g1**2, g2**3)
         # b = pair(g1, g2) ** 6
         # group.init(ZR, 10)
@@ -88,27 +86,40 @@ class Consultant(Client):
         x = self.MK['x']
         y = self.MK['y']
 
-        ## Step 1
-        t = num_Zn_star_not_one(q, group.random, ZR)
-        self.PKs['X'] = X ** t
-        for member in self.G.values():
-            print("sending to old members")
-            member.conn.root.update_certificate(group.serialize(t))
-        if not hasattr(self, 'server'):
-            self.connect_server()
-        self.server.root.update_public_key(group.serialize(t))
+        if M.id not in self.G:
+            print(self.G.keys())
+            print(M.id)
+            ## Step 1
+            t = num_Zn_star_not_one(q, group.random, ZR)
+            self.PKs['X'] = X ** t
+            self.t *= t
+            to_delete = []
+            for id, member in self.G.items():
+                print("sending to old members")
+                try:
+                    member.conn.root.update_certificate(group.serialize(t))
+                except (BrokenPipeError, EOFError):
+                    # member left
+                    to_delete.append(id)
+            for id in to_delete:
+                del self.G[id]
+            if not hasattr(self, 'server'):
+                self.connect_server()
+            self.server.root.update_public_key(group.serialize(t))
 
-        ## Step 2
-        ai = group.random(G1)
-        bi = ai ** y
-        ci = ai ** (t * (x + hash_Zn(M.id, group) * x * y))
+            ## Step 2
+            ai = group.random(G1)
+            bi = ai ** y
+            ci = ai ** (self.t * (x + hash_Zn(M.id, group) * x * y))
 
-        CTi = {'IDi': M.id, 'ai': ai, 'bi': bi, 'ci': ci}
-        print("sending CTi")
-        M.conn.root.add_certificate(serialize_CTi(CTi, self.PKs))
-        
-        # Add the new members to the member group
-        self.G[M.id] = M
+            CTi = {'IDi': M.id, 'ai': ai, 'bi': bi, 'ci': ci}
+            M.CTi = CTi
+            print("sending CTi")
+            
+            # Add the new members to the member group
+            self.G[M.id] = M
+
+        M.conn.root.add_certificate(serialize_CTi(M.CTi, self.PKs))
         
         ## Step 3: let old members update ci, we do this already in member.update_certificate
 
@@ -202,14 +213,12 @@ class ConsultantServer(rpyc.Service):
 
     def exposed_join(self, port, id):
         print("join")
-        SKg = serialize_SKg(self.consultant.SKg, self.consultant.PKs)
-        if id in self.consultant.G:
-            return SKg
-        client = ConsultantClient(self.ip, port, id)
+        client = self.consultant.G.get(id, ConsultantClient(self.ip, port, id))
         try:
             self.consultant.member_join(client)
         except Exception:
             traceback.print_exc()
+        SKg = serialize_SKg(self.consultant.SKg, self.consultant.PKs)
         return SKg
 
     def exposed_leave(self, id):

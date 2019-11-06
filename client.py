@@ -140,7 +140,6 @@ class Client():
 
         This function outputs the trapdoor `TLp` of the list `Lp`
         """
-        PKs = PKs
         SKg = self.SKg
         ru = num_Zn_star_not_one(PKs['q'], PKs['group'].random, ZR)
         T = []
@@ -266,8 +265,6 @@ class Client():
         files = []
         group = PKs['group']
         trapdoor = self.make_trapdoor(keywords)
-        print(CTi)
-        print(pair(CTi['ai'], PKs['Y']) == pair(PKs['g'], CTi['bi']))
         CTi_serialized = serialize_CTi(CTi, PKs)
         search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, PKs), CTi_serialized)
         if search_results == config.ACCESS_DENIED:
@@ -289,8 +286,6 @@ if __name__ == "__main__":
     consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
     server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
     PKs = deserialize_PKs(consultant.root.get_public_parameters())
-    print('Y', PKs['Y'])
-    print('g', PKs['g'])
     client = Client(8002, consultant, server)
     t = ThreadedServer(ClientServer(), port=8002, protocol_config=config.config)
     thread = threading.Thread(target=t.start)
