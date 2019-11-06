@@ -22,7 +22,7 @@ class ConsultantClient():
         self.id = id
         self.conn = rpyc.connect(ip, port, config=config.config)
 
-class Consultant(Client):
+class Consultant():
     """ 
     This is also the group manager (GM)
     """
