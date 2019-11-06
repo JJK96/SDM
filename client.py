@@ -55,7 +55,6 @@ class Client():
     ###
 
     def _build_index(self, L):
-        global PKs, CTi
         """
         This function takes as input:
         o Keyword list `L`
@@ -63,6 +62,8 @@ class Client():
 
         This function outputs secure index `IL`
         """
+        global PKs, CTi
+        assert len(L) == PKs['l'], "Keyword list should be l long"
         SKg = self.SKg
         α = SKg['α']
 
@@ -227,6 +228,7 @@ class Client():
     #  /DataDcrypt
     ###
 
+    #Unused!
     def build_index(self, L):
         global PKs, CTi
         SKg = self.SKg
@@ -253,10 +255,9 @@ class Client():
         D = read_file(file_location)
         IR, R, Ed = self.index_gen(D)
         Rs.append(R)
-        Ir, (U, V, Ed) = self.data_encrypt(R, IR, Ed)
-        IrSerialized = [PKs['group'].serialize(x) for x in Ir]
-        Er = (PKs['group'].serialize(U), V, Ed)
-        self.server.root.add_file(IrSerialized, Er)
+        Ir, Er = self.data_encrypt(R, IR, Ed)
+        IrSerialized = serialize_IL(Ir, PKs)
+        self.server.root.add_file(IrSerialized, serialize_Er(Er, PKs))
 
     
     def get_files_by_keywords(self, keywords):
@@ -270,6 +271,7 @@ class Client():
         if search_results == config.ACCESS_DENIED:
             return config.ACCESS_DENIED
         for i, result in enumerate(search_results):
+            result = deserialize_Er(result, PKs)
             Up, ν = self.data_aux(result)
             D = group.deserialize(self.consultant.root.get_decryption_key(group.serialize(Up), CTi_serialized))
             Rp, Ed = self.member_decrypt(result, D, ν)

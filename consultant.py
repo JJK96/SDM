@@ -53,7 +53,7 @@ class Consultant(Client):
         Y = g ** y
         Pp = P ** λ
         Qp = Q ** (λ - σ)
-        self.PKs = {'l': 11, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
+        self.PKs = {'l': 4, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         self.t = 1
@@ -227,7 +227,7 @@ class ConsultantServer(rpyc.Service):
         assert not member is None
         self.consultant.member_leave(member)
 
-    def exposed_get_decryption_key(Up, CTi):
+    def exposed_get_decryption_key(self, Up, CTi):
         print("get decryption key")
         PKs = self.consultant.PKs
         CTi = deserialize_CTi(CTi, PKs)

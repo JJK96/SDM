@@ -87,7 +87,6 @@ class Server(rpyc.Service):
         o Secure index `IL`
         o System public key PKs
         """
-
         assert len(TLp) == len(IL), "Length of trapdoor and index do not match!"
 
 
@@ -113,6 +112,7 @@ class Server(rpyc.Service):
             result = []
 
             for IR, file in self._load_all_ir_and_files():
+                IR = deserialize_IL(IR, self.PKs)
                 if self._test(TLp, IR):
                     result.append(file)
 

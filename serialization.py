@@ -48,3 +48,17 @@ def serialize_trapdoor(trapdoor, PKs):
 def deserialize_trapdoor(trapdoor, PKs):
     group = PKs['group']
     return [group.deserialize(x) for x in trapdoor]
+
+def serialize_IL(IL, PKs):
+    return [PKs['group'].serialize(x) for x in IL]
+
+def deserialize_IL(IL, PKs):
+    return [PKs['group'].deserialize(x) for x in IL]
+
+def serialize_Er(Er, PKs):
+    U, V, Ed = Er
+    return (PKs['group'].serialize(U), V, Ed)
+
+def deserialize_Er(Er, PKs):
+    U, V, Ed = Er
+    return (PKs['group'].deserialize(U), V, Ed)
