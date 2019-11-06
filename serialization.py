@@ -40,3 +40,11 @@ def deserialize_CTi(_CTi, PKs):
         CTi[k] = PKs['group'].deserialize(_CTi[k])
     CTi['IDi'] = _CTi['IDi']
     return CTi
+
+def serialize_trapdoor(trapdoor, PKs):
+    group = PKs['group']
+    return [group.serialize(x) for x in trapdoor]
+
+def deserialize_trapdoor(trapdoor, PKs):
+    group = PKs['group']
+    return [group.deserialize(x) for x in trapdoor]

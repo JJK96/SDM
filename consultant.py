@@ -28,8 +28,10 @@ class Consultant(Client):
     """
 
     def __init__(self, τ):
+        print('init')
         self.τ = τ
         self.system_setup(τ)
+        self.G = {}
  
     def connect_server(self):
         self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
@@ -54,6 +56,9 @@ class Consultant(Client):
         self.PKs = {'l': 11, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
+        print('doing setup')
+        print('Y', Y)
+        print('g', g)
         # a = pair(g1**2, g2**3)
         # b = pair(g1, g2) ** 6
         # group.init(ZR, 10)
@@ -64,7 +69,7 @@ class Consultant(Client):
     #  Generates the group membership certificates
     ###
 
-    def member_join(self, Ms: Set[ConsultantClient]):
+    def member_join(self, M):
         """
         This function is executed by the GM, interacting with old members when there are new members who wish to join
         the group. It takes as input:
@@ -76,9 +81,6 @@ class Consultant(Client):
         This function outputs Membership certificates {CT_N+i}; 1 <= i <= N for all newly joining members, updated
         membership certificates for the old members {M_i}; 1 <= i <= N, and an updated parameter of the system public key PKs.
         """
-        if not hasattr(self, 'G'):
-            self.G = set()
-
         group = self.PKs['group']
         q = self.PKs['q']
         X = self.PKs['X']
@@ -89,31 +91,31 @@ class Consultant(Client):
         ## Step 1
         t = num_Zn_star_not_one(q, group.random, ZR)
         self.PKs['X'] = X ** t
-        for member in self.G:
+        for member in self.G.values():
+            print("sending to old members")
             member.conn.root.update_certificate(group.serialize(t))
         if not hasattr(self, 'server'):
             self.connect_server()
         self.server.root.update_public_key(group.serialize(t))
 
         ## Step 2
-        for new_member in Ms:
-            ai = group.random(G1)
-            bi = ai ** y
-            ci = ai ** (t * (x + hash_Zn(new_member.id, group) * x * y))
+        ai = group.random(G1)
+        bi = ai ** y
+        ci = ai ** (t * (x + hash_Zn(M.id, group) * x * y))
 
-            CTi = {'IDi': new_member.id, 'ai': ai, 'bi': bi, 'ci': ci}
-            print("sending CTi")
-            new_member.conn.root.add_certificate(serialize_CTi(CTi, self.PKs))
+        CTi = {'IDi': M.id, 'ai': ai, 'bi': bi, 'ci': ci}
+        print("sending CTi")
+        M.conn.root.add_certificate(serialize_CTi(CTi, self.PKs))
         
         # Add the new members to the member group
-        self.G.update(Ms)
+        self.G[M.id] = M
         
         ## Step 3: let old members update ci, we do this already in member.update_certificate
 
         ## Step 4: new members keep CTi secret!
 
 
-    def member_leave(self, Ms: Set[Client]):
+    def member_leave(self, M):
         """
         This function is executed by the GM, interacting with the members after some members have left the group.
         It takes as input:
@@ -132,15 +134,13 @@ class Consultant(Client):
         t = num_Zn_star_not_one(q, group.random, ZR)
         self.PKs['X'] = X ** t
         t = group.serialize(t)
-        for member in self.G.difference(Ms):
+        del self.G[M.id]
+        for member in self.G.values():
             member.conn.root.update_certificate(t)
         if not hasattr(self, 'server'):
             self.connect_server()
         self.server.root.update_public_key(t)
         
-        # Remove the old members from the group
-        self.G = self.G.difference(Ms)
-
         ## Step 2: let remaining members update ci, we do this already in member.update_certificate
 
         ## Step 3: remaining members keep CTi secret!
@@ -202,26 +202,21 @@ class ConsultantServer(rpyc.Service):
 
     def exposed_join(self, port, id):
         print("join")
+        SKg = serialize_SKg(self.consultant.SKg, self.consultant.PKs)
+        if id in self.consultant.G:
+            return SKg
         client = ConsultantClient(self.ip, port, id)
-        clients = set()
-        clients.add(client)
         try:
-            self.consultant.member_join(clients)
+            self.consultant.member_join(client)
         except Exception:
             traceback.print_exc()
-        SKg = serialize_SKg(self.consultant.SKg, self.consultant.PKs)
         return SKg
 
     def exposed_leave(self, id):
         print("leave")
-        member = None
-        for c in self.consultant.G:
-            if c.id == id:
-               member = c
+        member = self.consultant.G[id]
         assert not member is None
-        members = set()
-        members.add(member)
-        self.consultant.member_leave(members)
+        self.consultant.member_leave(member)
 
     def exposed_get_decryption_key(Up, CTi):
         print("get decryption key")
@@ -232,7 +227,7 @@ class ConsultantServer(rpyc.Service):
         return PKs['group'].serialize(D)
 
 if __name__ == "__main__":
-    server = ThreadedServer(ConsultantServer, port = 8001, protocol_config=config.config)
+    server = ThreadedServer(ConsultantServer(), port = 8001, protocol_config=config.config)
     server.start() 
 # c = ConsultantServer()
 # c.exposed_get_public_parameters()

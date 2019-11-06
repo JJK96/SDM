@@ -192,7 +192,7 @@ class Client():
         """
         group = PKs['group']
         q = PKs['q']
-        
+
         U, _V, _Ed = Er
 
         μ = num_Zn_star_not_one(q, group.random, ZR)
@@ -266,9 +266,12 @@ class Client():
         files = []
         group = PKs['group']
         trapdoor = self.make_trapdoor(keywords)
-        serialized_trapdoor = [group.serialize(x) for x in trapdoor]
+        print(CTi)
+        print(pair(CTi['ai'], PKs['Y']) == pair(PKs['g'], CTi['bi']))
         CTi_serialized = serialize_CTi(CTi, PKs)
-        search_results = self.server.root.search_index(serialized_trapdoor, CTi_serialized)
+        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, PKs), CTi_serialized)
+        if search_results == config.ACCESS_DENIED:
+            return config.ACCESS_DENIED
         for i, result in enumerate(search_results):
             Up, ν = self.data_aux(result)
             D = group.deserialize(self.consultant.root.get_decryption_key(group.serialize(Up), CTi_serialized))
@@ -286,8 +289,10 @@ if __name__ == "__main__":
     consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
     server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
     PKs = deserialize_PKs(consultant.root.get_public_parameters())
+    print('Y', PKs['Y'])
+    print('g', PKs['g'])
     client = Client(8002, consultant, server)
-    t = ThreadedServer(ClientServer, port=8002, protocol_config=config.config)
+    t = ThreadedServer(ClientServer(), port=8002, protocol_config=config.config)
     thread = threading.Thread(target=t.start)
     thread.start()
     print("joining:")

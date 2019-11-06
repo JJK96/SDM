@@ -33,14 +33,8 @@ class Server(rpyc.Service):
             os.makedirs(self.file_directory)
 
     def exposed_update_public_key(self, t):
-        try:
-            t = self.PKs['group'].deserialize(t)
-            print(type(t))
-            self.PKs['X'] = self.PKs['X'] ** t
-            print('works')
-        except Exception as e:
-            print("exception")
-            print(e)
+        t = self.PKs['group'].deserialize(t)
+        self.PKs['X'] = self.PKs['X'] ** t
 
     def exposed_add_file(self, IR, file):
         """
@@ -100,7 +94,7 @@ class Server(rpyc.Service):
         V = PKs['group'].pair_prod(TLp, IL)
         return V == PKs['group'].init(GT, 1)
 
-    def exposed_search_index(self, TLp: List[pairing.pc_element], CTi):
+    def exposed_search_index(self, TLp, CTi):
         """
         Scan all secure indexes against the trapdoor. It takes as input:
         o Trapdoor `TLp`
@@ -112,17 +106,19 @@ class Server(rpyc.Service):
         the member when the data does not contain the keywords
         """
         print('started search index')
+        TLp = deserialize_trapdoor(TLp, self.PKs)
         if self.member_check(CTi):
             result = []
 
             for IR, file in self._load_all_ir_and_files():
                 if self._test(TLp, IR):
                     result.append(file)
+                    print(file)
 
             return result
 
         else:
-            return "Access Denied"
+            return config.ACCESS_DENIED
 
     def _load_all_ir_and_files(self):
         result = []
@@ -147,5 +143,7 @@ if __name__ == '__main__':
     consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
     PKs = consultant.root.get_public_parameters()
     PKs = deserialize_PKs(PKs)
+    print('Y', PKs['Y'])
+    print('g', PKs['g'])
     server = ThreadedServer(Server(PKs), port=config.SERVER_PORT, protocol_config=config.config)
     server.start()
