@@ -4,7 +4,6 @@ from charm.toolbox.pairinggroup import PairingGroup, ZR, H, hashPair
 import hashlib
 import math
 from typing import SupportsFloat, List, Union
-from keywords import keywords
 
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES

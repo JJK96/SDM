@@ -23,9 +23,7 @@ def search():
     query = request.args['q']
     query = query.split(' ')
     try:
-        print(query)
         result = client.get_files_by_keywords(query)
-        print(result)
     except KeyError as k:
         result = "Search word {} is not a keyword".format(str(k))
     except Exception as e:

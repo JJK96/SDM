@@ -2,7 +2,6 @@ from typing import List, Dict, Set, Tuple, Callable
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
 import charm.core.math.pairing as pairing
 from funcs import *
-from keywords import keywords
 from numpy.polynomial.polynomial import polyfromroots
 import numpy as np
 import uuid
@@ -33,7 +32,7 @@ class Client(rpyc.Service):
         self.consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
         self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
         self.PKs = deserialize_PKs(self.consultant.root.get_public_parameters())
-        self.id = uuid.uuid4().int
+        self.id = str(uuid.uuid4())
         self.port = random.randint(1024, 65535)
         self.CTi = None
         self.start_server()
@@ -73,13 +72,9 @@ class Client(rpyc.Service):
         for i in range(0, self.PKs['l']):
             if i < len(L):
                 word = L[i]
-                try:
-                    hashed = keywords[word]
-                except KeyError:
-                    hashed = 0
             else:
-                hashed = 0
-            roots.append(int(α * hash_Zn(hashed, self.PKs['group'])))
+                word = '⊥'
+            roots.append(int(α * hash_Zn(word, self.PKs['group'])))
 
         polynomial_coefficients = list(polyfromroots(roots))
 
@@ -157,8 +152,7 @@ class Client(rpyc.Service):
             i = self.PKs['group'].init(ZR, i)
             Ti = self.PKs['group'].init(G1, 1)
             for j in range(len(Lp)):
-                word = keywords[Lp[j]]
-                Tij = self.PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, self.PKs['group'])) ** i)
+                Tij = self.PKs['g'] ** (ru * (SKg['α'] * hash_Zn(Lp[j], self.PKs['group'])) ** i)
                 Ti = Ti * Tij
             T.append(Ti)
         return T

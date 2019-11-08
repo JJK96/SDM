@@ -23,7 +23,7 @@ class ConsultantClient():
         self.public_key = public_key
         self.conn = rpyc.connect(ip, port, config=config.config)
 
-class Consultant(Client):
+class Consultant():
     """ 
     This is also the group manager (GM)
     """
@@ -35,7 +35,6 @@ class Consultant(Client):
         self.G = {}
         self.signingkey = gen_signing_key()
         self.id = uuid.uuid4().int
-        self.member_join(self)
  
     def connect_server(self):
         self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
