@@ -15,24 +15,29 @@ import threading
 import config
 from serialization import *
 import random
+from Crypto.PublicKey import ECC
 
 
 # DEBUG
 import code
 from charm.toolbox.pairingcurves import params as param_info  # dictionary with possible pairing param_id
 
+
 class Client(rpyc.Service):
     """
     This is the client
     """
 
-    def __init__(self, PKs, consultant, server):
+    def __init__(self):
+        self.consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
+        self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
+        self.PKs = deserialize_PKs(self.consultant.root.get_public_parameters())
         self.id = uuid.uuid4().int
         self.port = random.randint(1024, 65535)
-        self.consultant = consultant
-        self.server = server
-        self.PKs = PKs
         self.CTi = None
+        self.start_server()
+        self.join_consultant()
+        self.signingkey = gen_signing_key()
     
     ###
     #  DataGen
@@ -40,7 +45,7 @@ class Client(rpyc.Service):
     ###
 
     def exposed_add_certificate(self, _CTi):
-        self.CTi = deserialize_CTi(_CTi, PKs)
+        self.CTi = deserialize_CTi(_CTi, self.PKs)
 
     def exposed_update_certificate(self, t: pairing.pc_element):
         assert self.CTi is not None, "Client has no certificate to update!"
@@ -114,7 +119,7 @@ class Client(rpyc.Service):
 
         V = xor(R, hash_p(pair(Q, Pp) ** γ))
 
-        Er = (U, V, Ed)
+        Er = (U, V, Ed, sign_message(self.signingkey, Ed))
         # Upload E(R) and Ir to the server; print for now
         return IR, Er
 
@@ -239,24 +244,31 @@ class Client(rpyc.Service):
         return IL
 
 
-    def upload_file(self, file_location):
+    def upload_file(self, file_location, recipient: int=-1):
         assert self.CTi is not None, "Client needs a certificate!"
-        Rs = [] 
+        
+        if recipient == -1:
+            recipient = self.id
+
         D = read_file(file_location)
         IR, R, Ed = self.index_gen(D)
-        Rs.append(R)
         Ir, Er = self.data_encrypt(R, IR, Ed)
         IrSerialized = serialize_IL(Ir, self.PKs)
-        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs))
+
+        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), recipient)
 
     
     def get_files_by_keywords(self, keywords):
         assert self.CTi is not None, "Client needs a certificate!"
+
         files = []
         group = self.PKs['group']
         trapdoor = self.make_trapdoor(keywords)
         CTi_serialized = serialize_CTi(self.CTi, self.PKs)
-        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized)
+
+        signature = sign_message(self.signingkey, trapdoor)
+
+        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, signature)
         if search_results == config.ACCESS_DENIED:
             return config.ACCESS_DENIED
         for i, result in enumerate(search_results):
@@ -270,23 +282,15 @@ class Client(rpyc.Service):
     
     def join_consultant(self):
         assert self.CTi is None, "Client already has a certificate!"
-        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id), self.PKs)
+        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id, self.signingkey.public_key()), self.PKs)
 
     def start_server(self):
         t = ThreadedServer(self, port=self.port, protocol_config=config.config)
         thread = threading.Thread(target=t.start)
         thread.start()
 
-consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
-server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
-PKs = deserialize_PKs(consultant.root.get_public_parameters())
-client = Client(PKs, consultant, server)
-client.start_server()
-print("joining:")
-client.join_consultant()
-print("skg: " + str(client.SKg))
-
 if __name__ == "__main__":
+    client = Client()
     print("uploading file")
     client.upload_file("test.txt")
     print(client.get_files_by_keywords(["from", "the"]))

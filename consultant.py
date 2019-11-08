@@ -31,6 +31,7 @@ class Consultant():
         self.τ = τ
         self.system_setup(τ)
         self.G = {}
+        self.signingkey = gen_signing_key()
  
     def connect_server(self):
         self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
@@ -209,6 +210,10 @@ class ConsultantServer(rpyc.Service):
     def exposed_get_public_parameters(self):
         print("get public parameters")
         return serialize_PKs(self.consultant.PKs)
+    
+    def exposed_get_public_key(self):
+        print("get public key")
+        return serialize_public_key(self.consultant.signingkey.public_key())
 
     def exposed_join(self, port, id):
         print("join")

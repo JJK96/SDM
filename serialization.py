@@ -1,5 +1,6 @@
 import copy
 from charm.toolbox.pairinggroup import PairingGroup
+from Crypto.PublicKey import ECC
 
 def serialize_PKs(PKs):
     PKs = copy.copy(PKs)
@@ -56,9 +57,15 @@ def deserialize_IL(IL, PKs):
     return [PKs['group'].deserialize(x) for x in IL]
 
 def serialize_Er(Er, PKs):
-    U, V, Ed = Er
-    return (PKs['group'].serialize(U), V, Ed)
+    U, V, Ed, sig = Er
+    return (PKs['group'].serialize(U), V, Ed, sig)
 
 def deserialize_Er(Er, PKs):
-    U, V, Ed = Er
+    U, V, Ed, _sig = Er    # filter out the signature
     return (PKs['group'].deserialize(U), V, Ed)
+
+def serialize_public_key(public_key: ECC.EccKey):
+    return public_key.export_key(format='DER')
+
+def deserialize_public_key(public_key: bytes):
+    return ECC.import_key(public_key)
