@@ -144,9 +144,10 @@ class Client(rpyc.Service):
             i = self.PKs['group'].init(ZR, i)
             Ti = self.PKs['group'].init(G1, 1)
             for j in range(len(Lp)):
-                word = keywords[Lp[j]]  # What if keyword not in keywordlist?
-                Tij = self.PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, self.PKs['group'])) ** i)
-                Ti = Ti * Tij
+                if Lp[j] in keywords:
+                    word = keywords[Lp[j]]
+                    Tij = self.PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, self.PKs['group'])) ** i)
+                    Ti = Ti * Tij
             T.append(Ti)
         return T
 
@@ -276,15 +277,16 @@ class Client(rpyc.Service):
         thread = threading.Thread(target=t.start)
         thread.start()
 
+consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
+server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
+PKs = deserialize_PKs(consultant.root.get_public_parameters())
+client = Client(PKs, consultant, server)
+client.start_server()
+print("joining:")
+client.join_consultant()
+print("skg: " + str(client.SKg))
+
 if __name__ == "__main__":
-    consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
-    server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
-    PKs = deserialize_PKs(consultant.root.get_public_parameters())
-    client = Client(PKs, consultant, server)
-    client.start_server()
-    print("joining:")
-    client.join_consultant()
-    print("skg: " + str(client.SKg))
     print("uploading file")
     client.upload_file("test.txt")
     print(client.get_files_by_keywords(["from", "the"]))
