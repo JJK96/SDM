@@ -11,6 +11,7 @@ import config
 import json
 import base64
 from serialization import *
+from errors import *
 
 FILE_DIRECTORY = 'documents'
 
@@ -22,7 +23,9 @@ class Server(rpyc.Service):
 
     def __init__(self, _PKs, _consultant_public_key):
         """
-        Initialize the server class with arguments ...
+        The constructor of the server object
+        :param _PKs: The system's public parameters
+        :param _consultant_public_key: The public key of the systems consultant
         """
         self.PKs = _PKs
         self.file_directory = FILE_DIRECTORY
@@ -31,6 +34,9 @@ class Server(rpyc.Service):
         self.consultant_public_key = _consultant_public_key
 
     def _create_documents_folder(self):
+        """
+        Helper function to create the directory where the files need to be stored
+        """
         if not os.path.exists(self.file_directory):
             os.makedirs(self.file_directory)
 
@@ -41,9 +47,19 @@ class Server(rpyc.Service):
     def exposed_add_file(self, IR, file, client_id):
         """
         Add a client-generated index and encrypted file to the server
+        :param IR: The searchable indexes
+        :param file: The file object, containing U, V, Er, and signature
+        :param client_id: The client id for which the file needs to be added
         """
+
         U, V, Er, signature = file
         IR = [base64.b64encode(x).decode('ascii') for x in IR]
+
+        if client_id not in self.client_public_keys.keys():
+            raise InputError('Client ID is not found in the server\'s list of clients')
+
+        if not (verify_message(self.client_public_keys[client_id], Er, signature) or verify_message(self.consultant_public_key, Er, signature)):
+            raise InputError('The signature does not match the client ID\'s public key or the consultant\'s public key')
 
         file_to_save = {
             'client_id': client_id,
@@ -51,7 +67,6 @@ class Server(rpyc.Service):
             'V': base64.b64encode(V).decode('ascii'),
             'IR': IR,
             'Er': base64.b64encode(Er).decode('ascii'),
-            'signature': base64.b64encode(signature).decode('ascii')
         }
 
         file_name = self.file_directory + os.path.sep + str(len(next(os.walk(FILE_DIRECTORY))[2])) + '.json'
@@ -78,35 +93,27 @@ class Server(rpyc.Service):
 
     def member_check(self, CTi):
         """
-        This function checks the membership of a certificate. It takes as input:
-        o Membership Certificate `CTi`
-        o System public key `self.PKs`
-
-        This function outputs either Yes for access granted, or Access Denied to
-        terminate the protocol.
+        Check the membership of a certificate
+        :param CTi: Membership Certificate
+        :return: either Yes for access granted, or Access Denied to terminate the protocol
         """
-        print('started member check')
         X = self.PKs['X']
         Y = self.PKs['Y']
         g = self.PKs['g']
         group = self.PKs['group']
-        print('beginning pair stuff')
         CTi = deserialize_CTi(CTi, self.PKs)
-        print('beginning pair stuffs')
         member = pair(CTi['ai'], Y) == pair(g, CTi['bi']) and \
                  pair(X, CTi['ai']) * pair(X, CTi['bi']) ** hash_Zn(CTi['IDi'], group) == pair(g, CTi['ci'])
-        print('ended pair stuff')
         return member
 
     def _test(self, TLp: List[pairing.pc_element], IL: List[pairing.pc_element]) -> bool:
         """
-        Test whether the index matches the trapdoor. It takes as input:
-        o Trapdoor `TLp`
-        o Secure index `IL`
-        o System public key PKs
+        Test whether the index matches the trapdoor
+        :param TLp: Trapdoor
+        :param IL: Secure index
+        :return: True if the index matches the trapdoor
         """
         assert len(TLp) == len(IL), "Length of trapdoor and index do not match!"
-
 
         PKs = self.PKs
 
@@ -115,16 +122,13 @@ class Server(rpyc.Service):
 
     def exposed_search_index(self, TLp, CTi, trapdoor_signature):
         """
-        Scan all secure indexes against the trapdoor. It takes as input:
-        o Trapdoor `TLp`
-        o System public key `self.PKs`
-        o Membership Certificate `CTi`
-
-        This function outputs the encrypted data `E(R)` for the member when
-        the data includes the searched keywords or "No Data Matched" for
-        the member when the data does not contain the keywords
+        Scan all secure indexes against the trapdoor
+        :param TLp: Trapdoor
+        :param CTi: Membership certificate
+        :param trapdoor_signature: Signature of the trapdoor
+        :return: Encrypted data `E(R)` for the member when the data includes the searched keywords or "No Data Matched"
+        for the member when the data does not contain the keywords
         """
-        print('started search index')
         TLp = deserialize_trapdoor(TLp, self.PKs)
 
         if self.member_check(CTi):
@@ -132,8 +136,8 @@ class Server(rpyc.Service):
 
             for IR, file, client_id in self._load_all_ir_and_files():
                 IR = deserialize_IL(IR, self.PKs)
-                if (client_id == CTi['IDi'] and verify_message(self.client_public_keys[CTi['IDi']], TLp, trapdoor_signature)) or \
-                        verify_message(self.consultant_public_key, TLp, trapdoor_signature) and \
+                if ((client_id == CTi['IDi'] and verify_message(self.client_public_keys[CTi['IDi']], TLp, trapdoor_signature)) or \
+                        verify_message(self.consultant_public_key, TLp, trapdoor_signature)) and \
                         self._test(TLp, IR):
                     result.append(file)
 
@@ -143,6 +147,10 @@ class Server(rpyc.Service):
             return config.ACCESS_DENIED
 
     def _load_all_ir_and_files(self):
+        """
+        Helper function to load all the files that are stored on the server
+        :return: List of all the files as tuples (IR, file)
+        """
         result = []
         files = next(os.walk(self.file_directory))[2]
         for file_name in files:
@@ -153,8 +161,7 @@ class Server(rpyc.Service):
             U = base64.b64decode(data['U'].encode('ascii'))
             V = base64.b64decode(data['V'].encode('ascii'))
             Er = base64.b64decode(data['Er'].encode('ascii'))
-            signature = base64.b64decode(data['signature'].encode('ascii'))
-            file = (U, V, Er, signature)
+            file = (U, V, Er)
 
             result.append((IR, file, client_id))
 
