@@ -49,10 +49,9 @@ def log2(x: SupportsFloat):
         return math.log2(x)
 
 
-def hash_Zn(i: int, group: PairingGroup) -> pairing.pc_element:
+def hash_Zn(keyword: str, group: PairingGroup) -> pairing.pc_element:
     sha = hashlib.sha3_512()
-    i_length = (int(log2(i)) // 8) + 1
-    sha.update(i.to_bytes(i_length, byteorder="big"))
+    sha.update(keyword.encode())
     digest = sha.digest()
     digest_int = int.from_bytes(digest, byteorder="big")
     return group.init(ZR, digest_int)
