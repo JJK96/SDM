@@ -14,6 +14,7 @@ import time
 import threading
 import config
 from serialization import *
+import random
 
 
 # DEBUG
@@ -25,9 +26,9 @@ class Client(rpyc.Service):
     This is the client
     """
 
-    def __init__(self, PKs, client_port, consultant, server):
+    def __init__(self, PKs, consultant, server):
         self.id = uuid.uuid4().int
-        self.port = client_port
+        self.port = random.randint(1024, 65535)
         self.consultant = consultant
         self.server = server
         self.PKs = PKs
@@ -270,7 +271,7 @@ class Client(rpyc.Service):
         self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id), self.PKs)
 
     def start_server(self):
-        t = ThreadedServer(self, port=8002, protocol_config=config.config)
+        t = ThreadedServer(self, port=self.port, protocol_config=config.config)
         thread = threading.Thread(target=t.start)
         thread.start()
 
@@ -278,7 +279,7 @@ if __name__ == "__main__":
     consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
     server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
     PKs = deserialize_PKs(consultant.root.get_public_parameters())
-    client = Client(PKs, 8002, consultant, server)
+    client = Client(PKs, consultant, server)
     client.start_server()
     print("joining:")
     client.join_consultant()
