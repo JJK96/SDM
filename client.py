@@ -44,6 +44,7 @@ class Client(rpyc.Service):
 
     def exposed_update_certificate(self, t: pairing.pc_element):
         assert self.CTi is not None, "Client has no certificate to update!"
+        t = self.PKs['group'].deserialize(t)
 
         ## Step 1
         self.PKs['X'] = self.PKs['X'] ** t
