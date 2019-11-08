@@ -15,11 +15,13 @@ import threading
 import config
 from serialization import *
 import random
+from Crypto.PublicKey import ECC
 
 
 # DEBUG
 import code
 from charm.toolbox.pairingcurves import params as param_info  # dictionary with possible pairing param_id
+
 
 class Client(rpyc.Service):
     """
@@ -33,6 +35,7 @@ class Client(rpyc.Service):
         self.server = server
         self.PKs = PKs
         self.CTi = None
+        self.signingkey = gen_signing_key()
     
     ###
     #  DataGen
@@ -238,15 +241,16 @@ class Client(rpyc.Service):
         return IL
 
 
-    def upload_file(self, file_location):
+    def upload_file(self, file_location, recipient: int=self.id):
         assert self.CTi is not None, "Client needs a certificate!"
-        Rs = [] 
         D = read_file(file_location)
         IR, R, Ed = self.index_gen(D)
-        Rs.append(R)
         Ir, Er = self.data_encrypt(R, IR, Ed)
         IrSerialized = serialize_IL(Ir, self.PKs)
-        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs))
+
+        signature = sign_message(self.signingkey, Er)
+
+        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), recipient, signature)
 
     
     def get_files_by_keywords(self, keywords):
@@ -255,7 +259,10 @@ class Client(rpyc.Service):
         group = self.PKs['group']
         trapdoor = self.make_trapdoor(keywords)
         CTi_serialized = serialize_CTi(self.CTi, self.PKs)
-        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized)
+
+        signature = sign_message(self.signingkey, trapdoor)
+
+        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, self.id, signature)
         if search_results == config.ACCESS_DENIED:
             return config.ACCESS_DENIED
         for i, result in enumerate(search_results):
@@ -269,7 +276,7 @@ class Client(rpyc.Service):
     
     def join_consultant(self):
         assert self.CTi is None, "Client already has a certificate!"
-        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id), self.PKs)
+        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id, self.signingkey.public_key()), self.PKs)
 
     def start_server(self):
         t = ThreadedServer(self, port=self.port, protocol_config=config.config)
