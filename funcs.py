@@ -3,7 +3,7 @@ import charm.core.math.pairing as pairing
 from charm.toolbox.pairinggroup import PairingGroup, ZR, H, hashPair
 import hashlib
 import math
-from typing import SupportsFloat, List
+from typing import SupportsFloat, List, Union
 from keywords import keywords
 
 from Crypto.Random import get_random_bytes
@@ -136,6 +136,16 @@ def decrypt_document(key: bytes, ciphertext: bytes) -> str:
     doc_raw = cipher.decrypt_and_verify(ciphertext, tag)
 
     return doc_raw.decode('utf-8')
+
+
+def trapdoor_to_bytes(trapdoor: List[pairing.pc_element]) -> bytes:
+    assert len(trapdoor) > 0
+
+    serialized = pairing.serialize(trapdoor[0])
+    for t in trapdoor[1:]:
+        serialized = serialized + pairing.serialize(t)
+    
+    return serialized
 
 
 def sign_message(key, message: Union[bytes, List[pairing.pc_element]]) -> bytes:
