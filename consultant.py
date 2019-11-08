@@ -54,7 +54,7 @@ class Consultant():
         Y = g ** y
         Pp = P ** λ
         Qp = Q ** (λ - σ)
-        self.PKs = {'l': 4, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
+        self.PKs = {'l': 20, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         self.t = 1

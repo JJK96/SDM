@@ -8,14 +8,14 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 client = Client()
-print('key: ', client.signingkey)
 
 @app.route("/upload", methods=['POST'])
 def upload():
     f = request.files['file']
     filename = secure_filename(f.filename)
-    f.save(os.path.join(UPLOAD_FOLDER, filename)) 
-    client.upload_file(filename)
+    fullname = os.path.join(UPLOAD_FOLDER, filename)
+    f.save(fullname) 
+    client.upload_file(fullname)
     return 'upload successful'
 
 @app.route("/search", methods=['GET'])
@@ -23,8 +23,8 @@ def search():
     query = request.args['q']
     query = query.split(' ')
     try:
-        result = client.get_files_by_keywords(query)
         print(query)
+        result = client.get_files_by_keywords(query)
         print(result)
     except KeyError as k:
         result = "Search word {} is not a keyword".format(str(k))

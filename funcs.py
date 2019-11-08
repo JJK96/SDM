@@ -113,8 +113,7 @@ def extract_keywords(doc: str) -> List[str]:
     result = []
 
     for word in doc:
-        if word in keywords:
-            result.append(word)
+        result.append(word)
     
     return result
 

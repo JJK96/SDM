@@ -61,7 +61,7 @@ def serialize_Er(Er, PKs):
     return (PKs['group'].serialize(U), V, Ed, sig)
 
 def deserialize_Er(Er, PKs):
-    U, V, Ed, _sig = Er    # filter out the signature
+    U, V, Ed = Er    # filter out the signature
     return (PKs['group'].deserialize(U), V, Ed)
 
 def serialize_public_key(public_key: ECC.EccKey):

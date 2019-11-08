@@ -65,13 +65,21 @@ class Client(rpyc.Service):
 
         This function outputs secure index `IL`
         """
-        assert len(L) == self.PKs['l'], "Keyword list should be l long"
+        # assert len(L) == self.PKs['l'], "Keyword list should be l long"
         SKg = self.SKg
         α = SKg['α']
 
         roots = []
-        for word in L:
-            roots.append(int(α * hash_Zn(keywords[word], self.PKs['group'])))
+        for i in range(0, self.PKs['l']):
+            if i < len(L):
+                word = L[i]
+                try:
+                    hashed = keywords[word]
+                except KeyError:
+                    hashed = 0
+            else:
+                hashed = 0
+            roots.append(int(α * hash_Zn(hashed, self.PKs['group'])))
 
         polynomial_coefficients = list(polyfromroots(roots))
 
@@ -291,5 +299,5 @@ class Client(rpyc.Service):
 if __name__ == "__main__":
     client = Client()
     print("uploading file")
-    client.upload_file("test.txt")
-    print(client.get_files_by_keywords(["from", "the", "gold"]))
+    client.upload_file("test_files/test.txt")
+    print(client.get_files_by_keywords(["from", "the"]))
