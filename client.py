@@ -255,11 +255,8 @@ class Client(rpyc.Service):
         self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), recipient)
 
     
-    def get_files_by_keywords(self, keywords, sender: int=-1):
+    def get_files_by_keywords(self, keywords):
         assert self.CTi is not None, "Client needs a certificate!"
-
-        if sender == -1:
-            sender = self.id
 
         files = []
         group = self.PKs['group']
