@@ -56,9 +56,9 @@ def deserialize_IL(IL, PKs):
     return [PKs['group'].deserialize(x) for x in IL]
 
 def serialize_Er(Er, PKs):
-    U, V, Ed = Er
-    return (PKs['group'].serialize(U), V, Ed)
+    U, V, Ed, sig = Er
+    return (PKs['group'].serialize(U), V, Ed, sig)
 
 def deserialize_Er(Er, PKs):
-    U, V, Ed = Er
+    U, V, Ed, _sig = Er    # filter out the signature
     return (PKs['group'].deserialize(U), V, Ed)
