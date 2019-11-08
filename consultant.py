@@ -1,7 +1,6 @@
 from typing import List, Dict, Set, Tuple, Callable
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, pair
 from funcs import *
-from client import Client
 import rpyc
 import copy
 from rpyc.utils.server import ThreadedServer
