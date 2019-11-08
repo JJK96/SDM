@@ -241,8 +241,12 @@ class Client(rpyc.Service):
         return IL
 
 
-    def upload_file(self, file_location, recipient: int=self.id):
+    def upload_file(self, file_location, recipient: int=-1):
         assert self.CTi is not None, "Client needs a certificate!"
+        
+        if recipient == -1:
+            recipient = self.id
+
         D = read_file(file_location)
         IR, R, Ed = self.index_gen(D)
         Ir, Er = self.data_encrypt(R, IR, Ed)
