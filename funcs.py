@@ -8,6 +8,9 @@ from keywords import keywords
 
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
+from Crypto.Hash import SHA512
+from Crypto.Signature import DSS
+from Crypto.PublicKey import ECC
 
 def num_Zn_star(n, fun, *args):
     """
@@ -135,15 +138,27 @@ def decrypt_document(key: bytes, ciphertext: bytes) -> str:
     return doc_raw.decode('utf-8')
 
 
-def int_to_bytes(x: int) -> bytes:
-    bytes = x.to_bytes((x.bit_length() + 7) // 8, 'big')
-    if len(bytes) < 8:
-        bytes = bytes
-    return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+def sign_message(key, message: Union[bytes, List[pairing.pc_element]]) -> bytes:
+    if isinstance(message, list):
+        message = trapdoor_to_bytes(message)
+
+    h = SHA512.new(message)
+    signer = DSS.new(key, 'fips-186-3')
+    return signer.sign(h)
 
 
-def int_from_bytes(xbytes: bytes) -> int:
-    return int.from_bytes(xbytes, 'big')
+def verify_message(pubkey, message: Union[bytes, List[pairing.pc_element]], signature: bytes) -> bool:
+    if isinstance(message, list):
+        message = trapdoor_to_bytes(message)
+        
+    h = SHA512.new(message)
+    verifier = DSS.new(pubkey, 'fips-186-3')
+    try:
+        verifier.verify(h, signature)
+        return True
+    except ValueError:
+        return False
+
 
 if __name__ == '__main__':
     print(poly_from_roots([6, 2, 3]))
