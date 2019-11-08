@@ -11,6 +11,7 @@ from socket import socket
 import traceback
 import config
 from serialization import *
+import uuid
 
 #DEBUG
 import code
@@ -23,7 +24,7 @@ class ConsultantClient():
         self.public_key = public_key
         self.conn = rpyc.connect(ip, port, config=config.config)
 
-class Consultant():
+class Consultant(Client):
     """ 
     This is also the group manager (GM)
     """
@@ -34,6 +35,8 @@ class Consultant():
         self.system_setup(τ)
         self.G = {}
         self.signingkey = gen_signing_key()
+        self.id = uuid.uuid4().int
+        self.member_join(self)
  
     def connect_server(self):
         self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
