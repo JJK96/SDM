@@ -117,7 +117,7 @@ class Client(rpyc.Service):
 
         V = xor(R, hash_p(pair(Q, Pp) ** γ))
 
-        Er = (U, V, Ed)
+        Er = (U, V, Ed, sign_message(self.signingkey, Ed))
         # Upload E(R) and Ir to the server; print for now
         return IR, Er
 
@@ -252,9 +252,7 @@ class Client(rpyc.Service):
         Ir, Er = self.data_encrypt(R, IR, Ed)
         IrSerialized = serialize_IL(Ir, self.PKs)
 
-        signature = sign_message(self.signingkey, Er)
-
-        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), recipient, signature)
+        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), recipient)
 
     
     def get_files_by_keywords(self, keywords, sender: int=-1):
@@ -270,7 +268,7 @@ class Client(rpyc.Service):
 
         signature = sign_message(self.signingkey, trapdoor)
 
-        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, sender, signature)
+        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, signature)
         if search_results == config.ACCESS_DENIED:
             return config.ACCESS_DENIED
         for i, result in enumerate(search_results):
