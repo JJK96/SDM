@@ -130,6 +130,10 @@ def encrypt_document(doc: str) -> (bytes, bytes):
     return key, cipher.nonce + tag + ciphertext
 
 
+def gen_signing_key() -> ECC.EccKey:
+    return ECC.generate(curve='secp521r1')
+
+
 def decrypt_document(key: bytes, ciphertext: bytes) -> str:
     nonce, tag, ciphertext = ciphertext[:16], ciphertext[16:32], ciphertext[32:]
     cipher = AES.new(key, AES.MODE_EAX, nonce)
