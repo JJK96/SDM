@@ -279,7 +279,7 @@ class Client(rpyc.Service):
     
     def join_consultant(self):
         assert self.CTi is None, "Client already has a certificate!"
-        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id, self.signingkey.public_key()), self.PKs)
+        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id, serialize_public_key(self.signingkey.public_key())), self.PKs)
 
     def start_server(self):
         t = ThreadedServer(self, port=self.port, protocol_config=config.config)
