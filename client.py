@@ -257,8 +257,12 @@ class Client(rpyc.Service):
         self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), recipient, signature)
 
     
-    def get_files_by_keywords(self, keywords):
+    def get_files_by_keywords(self, keywords, sender: int=-1):
         assert self.CTi is not None, "Client needs a certificate!"
+
+        if sender == -1:
+            sender = self.id
+
         files = []
         group = self.PKs['group']
         trapdoor = self.make_trapdoor(keywords)
@@ -266,7 +270,7 @@ class Client(rpyc.Service):
 
         signature = sign_message(self.signingkey, trapdoor)
 
-        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, self.id, signature)
+        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, sender, signature)
         if search_results == config.ACCESS_DENIED:
             return config.ACCESS_DENIED
         for i, result in enumerate(search_results):
