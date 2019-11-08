@@ -16,10 +16,11 @@ from serialization import *
 import code
 
 class ConsultantClient():
-    def __init__(self, ip, port, id):
+    def __init__(self, ip, port, id, public_key):
         self.ip = ip
         self.port = port
         self.id = id
+        self.public_key = public_key
         self.conn = rpyc.connect(ip, port, config=config.config)
 
 class Consultant():
@@ -107,6 +108,7 @@ class Consultant():
             if not hasattr(self, 'server'):
                 self.connect_server()
             self.server.root.update_public_key(group.serialize(t))
+            self.server.root.add_client(M.id, serialize_public_key(M.public_key))
 
             ## Step 2
             ai = group.random(G1)
@@ -216,9 +218,9 @@ class ConsultantServer(rpyc.Service):
         print("get public key")
         return serialize_public_key(self.consultant.signingkey.public_key())
 
-    def exposed_join(self, port, id):
+    def exposed_join(self, port, id, public_key: bytes):
         print("join")
-        client = self.consultant.G.get(id, ConsultantClient(self.ip, port, id))
+        client = self.consultant.G.get(id, ConsultantClient(self.ip, port, id, deserialize_public_key(public_key)))
         try:
             self.consultant.member_join(client)
         except Exception:

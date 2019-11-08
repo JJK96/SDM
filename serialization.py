@@ -67,5 +67,5 @@ def deserialize_Er(Er, PKs):
 def serialize_public_key(public_key: ECC.EccKey):
     return public_key.export_key(format='DER')
 
-def deserialize_public_key(public_key: bytes):
+def deserialize_public_key(public_key: bytes) -> ECC.EccKey:
     return ECC.import_key(public_key)
