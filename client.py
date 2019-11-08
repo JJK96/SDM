@@ -26,13 +26,15 @@ class Client(rpyc.Service):
     This is the client
     """
 
-    def __init__(self, PKs, consultant, server):
+    def __init__(self):
+        self.consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
+        self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
+        self.PKs = deserialize_PKs(self.consultant.root.get_public_parameters())
         self.id = uuid.uuid4().int
         self.port = random.randint(1024, 65535)
-        self.consultant = consultant
-        self.server = server
-        self.PKs = PKs
         self.CTi = None
+        self.start_server()
+        self.join_consultant()
     
     ###
     #  DataGen
@@ -40,7 +42,7 @@ class Client(rpyc.Service):
     ###
 
     def exposed_add_certificate(self, _CTi):
-        self.CTi = deserialize_CTi(_CTi, PKs)
+        self.CTi = deserialize_CTi(_CTi, self.PKs)
 
     def exposed_update_certificate(self, t: pairing.pc_element):
         assert self.CTi is not None, "Client has no certificate to update!"
@@ -277,14 +279,7 @@ class Client(rpyc.Service):
         thread.start()
 
 if __name__ == "__main__":
-    consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
-    server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
-    PKs = deserialize_PKs(consultant.root.get_public_parameters())
-    client = Client(PKs, consultant, server)
-    client.start_server()
-    print("joining:")
-    client.join_consultant()
-    print("skg: " + str(client.SKg))
+    client = Client()
     print("uploading file")
     client.upload_file("test.txt")
     print(client.get_files_by_keywords(["from", "the"]))
