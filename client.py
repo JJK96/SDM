@@ -294,5 +294,4 @@ if __name__ == "__main__":
     print("skg: " + str(client.SKg))
     print("uploading file")
     client.upload_file("test.txt")
-    print("DONE BITCHES")
     print(client.get_files_by_keywords(["from", "the"]))
