@@ -132,8 +132,8 @@ class Server(rpyc.Service):
 
             for IR, file, client_id in self._load_all_ir_and_files():
                 IR = deserialize_IL(IR, self.PKs)
-                if (client_id == CTi['IDi'] and verify_message(self.client_public_keys[CTi['IDi']], TLp, trapdoor_signature)) or \
-                        verify_message(self.consultant_public_key, TLp, trapdoor_signature) and \
+                if ((client_id == CTi['IDi'] and verify_message(self.client_public_keys[CTi['IDi']], TLp, trapdoor_signature)) or \
+                        verify_message(self.consultant_public_key, TLp, trapdoor_signature)) and \
                         self._test(TLp, IR):
                     result.append(file)
 

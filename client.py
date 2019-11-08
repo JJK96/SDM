@@ -29,6 +29,7 @@ class Client(rpyc.Service):
     """
 
     def __init__(self):
+        self.signingkey = gen_signing_key()
         self.consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
         self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
         self.PKs = deserialize_PKs(self.consultant.root.get_public_parameters())
@@ -37,7 +38,6 @@ class Client(rpyc.Service):
         self.CTi = None
         self.start_server()
         self.join_consultant()
-        self.signingkey = gen_signing_key()
     
     ###
     #  DataGen
@@ -149,10 +149,9 @@ class Client(rpyc.Service):
             i = self.PKs['group'].init(ZR, i)
             Ti = self.PKs['group'].init(G1, 1)
             for j in range(len(Lp)):
-                if Lp[j] in keywords:
-                    word = keywords[Lp[j]]
-                    Tij = self.PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, self.PKs['group'])) ** i)
-                    Ti = Ti * Tij
+                word = keywords[Lp[j]]
+                Tij = self.PKs['g'] ** (ru * (SKg['α'] * hash_Zn(word, self.PKs['group'])) ** i)
+                Ti = Ti * Tij
             T.append(Ti)
         return T
 
@@ -293,4 +292,4 @@ if __name__ == "__main__":
     client = Client()
     print("uploading file")
     client.upload_file("test.txt")
-    print(client.get_files_by_keywords(["from", "the"]))
+    print(client.get_files_by_keywords(["from", "the", "gold"]))

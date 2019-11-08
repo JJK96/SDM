@@ -1,12 +1,14 @@
 from flask import Flask, redirect, request
 from werkzeug.utils import secure_filename
-from client import client
+from client import Client
 import os
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+client = Client()
+print('key: ', client.signingkey)
 
 @app.route("/upload", methods=['POST'])
 def upload():
@@ -22,6 +24,10 @@ def search():
     query = query.split(' ')
     try:
         result = client.get_files_by_keywords(query)
+        print(query)
+        print(result)
+    except KeyError as k:
+        result = "Search word {} is not a keyword".format(str(k))
     except Exception as e:
         result = str(e)
     return str(result)
