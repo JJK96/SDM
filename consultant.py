@@ -210,6 +210,10 @@ class ConsultantServer(rpyc.Service):
     def exposed_get_public_parameters(self):
         print("get public parameters")
         return serialize_PKs(self.consultant.PKs)
+    
+    def exposed_get_public_key(self):
+        print("get public key")
+        return 
 
     def exposed_join(self, port, id):
         print("join")
