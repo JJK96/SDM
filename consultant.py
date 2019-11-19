@@ -1,21 +1,22 @@
-from typing import List, Dict, Set, Tuple, Callable
-from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, pair
-from funcs import *
-import rpyc
-import copy
-from rpyc.utils.server import ThreadedServer
-from rpyc.utils.authenticators import SSLAuthenticator
-from socket import socket
+import threading
 import traceback
-import config
-from serialization import *
 import uuid
+from socket import socket
+
+import rpyc
+from charm.toolbox.pairinggroup import G1, pair
+from rpyc.utils.authenticators import SSLAuthenticator
+from rpyc.utils.server import ThreadedServer
+
+import config
 from client import Client
+from funcs import *
+from serialization import *
 import threading
 import time
 
-#DEBUG
-import code
+
+# DEBUG
 
 class ConsultantClient():
     def __init__(self, ip, port, id, public_key):
@@ -38,12 +39,13 @@ class Consultant(Client):
         self.signingkey = gen_signing_key()
         self.id = str(uuid.uuid4())
         self.group_auth()
-    
+
     def create_consultant_user(self):
         self.member_join(self)
- 
+
     def connect_server(self):
-        self.server = rpyc.ssl_connect(config.SERVER_IP, config.SERVER_PORT, keyfile="cert/consultant/key.pem", certfile="cert/consultant/certificate.pem", config=config.config)
+        self.server = rpyc.ssl_connect(config.SERVER_IP, config.SERVER_PORT, keyfile="cert/client/key.pem",
+                                       certfile="cert/client/certificate.pem", config=config.config)
 
     def system_setup(self, τ):
         """
@@ -62,7 +64,7 @@ class Consultant(Client):
         Y = g ** y
         Pp = P ** λ
         Qp = Q ** (λ - σ)
-        self.PKs = {'l': 21, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
+        self.PKs = {'l': 21, 'curve': curve, 'secparam': τ, 'group': group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         self.t = 1
@@ -140,7 +142,7 @@ class Consultant(Client):
             CTi = {'IDi': M.id, 'ai': ai, 'bi': bi, 'ci': ci}
             M.CTi = CTi
             print("sending CTi")
-            
+
             # Add the new members to the member group
             self.G[M.id] = M
 
@@ -151,7 +153,6 @@ class Consultant(Client):
         ## Step 3: let old members update ci, we do this already in member.update_certificate
 
         ## Step 4: new members keep CTi secret!
-
 
     def member_leave(self, M):
         """
@@ -181,7 +182,7 @@ class Consultant(Client):
         if not hasattr(self, 'server'):
             self.connect_server()
         self.server.root.update_public_key(t)
-        
+
         ## Step 2: let remaining members update ci, we do this already in member.update_certificate
 
         ## Step 3: remaining members keep CTi secret!
@@ -214,7 +215,7 @@ class Consultant(Client):
         σ = self.MK['σ']
 
         member = pair(CTi['ai'], Y) == pair(g, CTi['bi']) and \
-            pair(X, CTi['ai']) * pair(X, CTi['bi']) ** hash_Zn(CTi['IDi'], group) == pair(g, CTi['ci'])
+                 pair(X, CTi['ai']) * pair(X, CTi['bi']) ** hash_Zn(CTi['IDi'], group) == pair(g, CTi['ci'])
 
         if member:
             D = pair(Q, Up) ** σ
@@ -228,7 +229,6 @@ class Consultant(Client):
 
     def get_public_params(self):
         return self.PKs
-    
 
     def upload_file(self, file_location, client_id):
         assert self.CTi is not None, "Consultant needs a certificate!"
@@ -241,7 +241,6 @@ class Consultant(Client):
 
         self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), client_id)
 
-    
     def get_files_by_keywords(self, keywords):
         assert self.CTi is not None, "Consultant needs a certificate!"
         assert hasattr(self, 'server'), "Server has not yet been initialized!"
@@ -253,7 +252,8 @@ class Consultant(Client):
 
         signature = sign_message(self.signingkey, trapdoor)
 
-        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, signature)
+        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized,
+                                                       signature)
         if search_results == config.ACCESS_DENIED:
             return config.ACCESS_DENIED
         for i, result in enumerate(search_results):
@@ -264,6 +264,7 @@ class Consultant(Client):
             Rp, Ed = self.member_decrypt(result, D, ν)
             files.append(decrypt_document(Rp, Ed))
         return files
+
 
 class ConsultantServer(rpyc.Service):
     def __init__(self):
@@ -277,7 +278,7 @@ class ConsultantServer(rpyc.Service):
     def exposed_get_public_parameters(self):
         print("get public parameters")
         return serialize_PKs(self.consultant.PKs)
-    
+
     def exposed_get_public_key(self):
         print("get public key")
         return serialize_public_key(self.consultant.signingkey.public_key())
@@ -312,12 +313,16 @@ class ConsultantServer(rpyc.Service):
         Up = PKs['group'].deserialize(Up)
         D = self.consultant.get_decryption_key(Up, CTi)
         return PKs['group'].serialize(D)
-    
+
     def start_server(self):
         authenticator = SSLAuthenticator("cert/consultant/key.pem", "cert/consultant/certificate.pem")
-        server = ThreadedServer(self, port = 8001, protocol_config=config.config, authenticator=authenticator)
+        server = ThreadedServer(self, port=8001, protocol_config=config.config, authenticator=authenticator)
         thread = threading.Thread(target=server.start)
         thread.start()
+
+    def get_clients(self):
+        return list(self.consultant.G.keys())
+
 
 if __name__ == "__main__":
     ConsultantServer()

@@ -1,7 +1,8 @@
-from flask import Flask, redirect, request
-from werkzeug.utils import secure_filename
-from client import Client
 import os
+
+from flask import Flask, redirect, request
+
+from client import Client
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -33,8 +34,8 @@ def search():
 
 @app.route("/")
 def home():
-    return redirect('/static/index.html')
+    return redirect('/static/client.html')
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
