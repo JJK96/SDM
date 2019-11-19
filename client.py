@@ -46,9 +46,22 @@ class Client(rpyc.Service):
 
     def exposed_add_certificate(self, _CTi):
         self.CTi = deserialize_CTi(_CTi, self.PKs)
+        self.last_update = time.time()
 
     def exposed_update_certificate(self, t: pairing.pc_element):
         assert self.CTi is not None, "Client has no certificate to update!"
+        # t = self.PKs['group'].deserialize(t)
+
+        # ## Step 1
+        # self.PKs['X'] = self.PKs['X'] ** t
+
+        # ## Step 3
+        # self.CTi['ci'] = self.CTi['ci'] ** t
+    
+    def _update_certificate(self):
+        assert self.CTi is not None, "Client has no certificate to update!"
+        (timestamp, t) = self.consultant.root.get_update_t(self.last_update)
+        self.last_update = timestamp
         t = self.PKs['group'].deserialize(t)
 
         ## Step 1
@@ -56,6 +69,7 @@ class Client(rpyc.Service):
 
         ## Step 3
         self.CTi['ci'] = self.CTi['ci'] ** t
+
 
     def _build_index(self, L, client_id: str=None):
         """
@@ -74,8 +88,9 @@ class Client(rpyc.Service):
 
         roots = [int(α * hash_Zn(client_id, self.PKs['group']))]
         for i in range(1, self.PKs['l']):
-            if i < len(L):
+            if i < len(L) + 1:
                 word = L[i-1]
+                print(word)
             else:
                 word = '⊥'
             roots.append(int(α * hash_Zn(word, self.PKs['group'])))
@@ -252,6 +267,8 @@ class Client(rpyc.Service):
     def upload_file(self, file_contents, keywords):
         assert self.CTi is not None, "Client needs a certificate!"
 
+        self._update_certificate()
+
         D = file_contents
         IR, R, Ed = self.index_gen(D, keywords)
         Ir, Er = self.data_encrypt(R, IR, Ed)
@@ -262,6 +279,8 @@ class Client(rpyc.Service):
     
     def get_files_by_keywords(self, keywords):
         assert self.CTi is not None, "Client needs a certificate!"
+        
+        self._update_certificate()
 
         files = []
         group = self.PKs['group']
@@ -295,5 +314,5 @@ class Client(rpyc.Service):
 if __name__ == "__main__":
     client = Client()
     print("uploading file")
-    client.upload_file("test_files/test.txt")
-    print(client.get_files_by_keywords(["from", "the"]))
+    client.upload_file("Hello from the odder site".encode('utf-8'), "from the")
+    print(client.get_files_by_keywords(["the", "from"]))
