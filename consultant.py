@@ -303,7 +303,7 @@ class ConsultantServer(rpyc.Service):
     def exposed_leave(self, id):
         print("leave")
         member = self.consultant.G[id]
-        assert not member is None
+        assert member is not None
         self.consultant.member_leave(member)
 
     def exposed_get_decryption_key(self, Up, CTi):
