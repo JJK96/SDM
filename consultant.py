@@ -11,6 +11,7 @@ import config
 from serialization import *
 import uuid
 from client import Client
+import threading
 
 #DEBUG
 import code
@@ -269,6 +270,7 @@ class Consultant(Client):
 class ConsultantServer(rpyc.Service):
     def __init__(self):
         self.consultant = Consultant(512)
+        self.start_server()
 
     def on_connect(self, conn):
         self.ip, port = socket.getpeername(conn._channel.stream.sock)
@@ -305,10 +307,14 @@ class ConsultantServer(rpyc.Service):
         Up = PKs['group'].deserialize(Up)
         D = self.consultant.get_decryption_key(Up, CTi)
         return PKs['group'].serialize(D)
+    
+    def start_server(self):
+        authenticator = SSLAuthenticator("cert/consultant/key.pem", "cert/consultant/certificate.pem")
+        server = ThreadedServer(self, port = 8001, protocol_config=config.config, authenticator=authenticator)
+        thread = threading.Thread(target=server.start)
+        thread.start()
 
 if __name__ == "__main__":
-    authenticator = SSLAuthenticator("cert/consultant/key.pem", "cert/consultant/certificate.pem")
-    server = ThreadedServer(ConsultantServer(), port = 8001, protocol_config=config.config, authenticator=authenticator)
-    server.start() 
+    ConsultantServer()
 # c = ConsultantServer()
 # c.exposed_get_public_parameters()
