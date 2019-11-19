@@ -12,6 +12,7 @@ from serialization import *
 import uuid
 from client import Client
 import threading
+import time
 
 #DEBUG
 import code
@@ -65,6 +66,7 @@ class Consultant(Client):
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         self.t = 1
+        self.ts = []
         # a = pair(g1**2, g2**3)
         # b = pair(g1, g2) ** 6
         # group.init(ZR, 10)
@@ -123,6 +125,7 @@ class Consultant(Client):
             self.PKs['X'] = X ** t
             self.CTi['ci'] = self.CTi['ci'] ** t
             self.t *= t
+            self.ts.append((time.time(), t))
             to_delete = []
             for id, member in self.G.items():
                 print("sending to old members")
@@ -176,6 +179,9 @@ class Consultant(Client):
         t = num_Zn_star_not_one(q, group.random, ZR)
         self.PKs['X'] = X ** t
         self.CTi['ci'] = self.CTi['ci'] ** t
+        self.t *= t
+        self.ts.append((time.time(), t))
+
         t = group.serialize(t)
         del self.G[M.id]
         for member in self.G.values():
@@ -283,6 +289,13 @@ class ConsultantServer(rpyc.Service):
     def exposed_get_public_key(self):
         print("get public key")
         return serialize_public_key(self.consultant.signingkey.public_key())
+    
+    def exposed_get_update_t(self, last_update: float):
+        update = (time.time(), self.consultant.PKs['group'].init(ZR, 1))
+        for (timestamp, t) in filter(lambda x: x[0] > last_update, self.consultant.ts):
+            update = (timestamp, update[1] * t)
+        update = (update[0], self.consultant.PKs['group'].serialize(update[1]))
+        return update
 
     def exposed_join(self, port, id, public_key: bytes):
         print("join")
