@@ -9,7 +9,7 @@ $(document).ready(function () {
 function submitForm() {
 	var form_data = new FormData();
 	form_data.append('file', $('#file').prop('files')[0]);
-	form_data.append('keywords', $('#KeywordsTextArea'));
+	form_data.append('keywords', $('#KeywordsTextArea').val());
 	console.log(form_data);
 
 	console.log('tsttest');
