@@ -6,6 +6,7 @@ from charm.core.math.pairing import serialize, deserialize
 import Crypto
 
 from funcs import *
+from rpyc.utils.authenticators import SSLAuthenticator
 from rpyc.utils.server import ThreadedServer  # or ForkingServer
 import config
 import json
@@ -169,9 +170,10 @@ class Server(rpyc.Service):
 
 
 if __name__ == '__main__':
-    consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
+    consultant = rpyc.ssl_connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, keyfile="cert/server/key.pem", certfile="cert/server/certificate.pem", config=config.config)
     PKs = consultant.root.get_public_parameters()
     consultant_public_key = deserialize_public_key(consultant.root.get_public_key())
     PKs = deserialize_PKs(PKs)
-    server = ThreadedServer(Server(PKs, consultant_public_key), port=config.SERVER_PORT, protocol_config=config.config)
+    authenticator = SSLAuthenticator("cert/server/key.pem", "cert/server/certificate.pem")
+    server = ThreadedServer(Server(PKs, consultant_public_key), port=config.SERVER_PORT, protocol_config=config.config, authenticator=authenticator)
     server.start()

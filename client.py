@@ -7,6 +7,7 @@ import numpy as np
 import uuid
 import os
 import rpyc
+from rpyc.utils.authenticators import SSLAuthenticator
 from rpyc.utils.server import ThreadedServer
 import pickle
 import time
@@ -29,8 +30,8 @@ class Client(rpyc.Service):
 
     def __init__(self):
         self.signingkey = gen_signing_key()
-        self.consultant = rpyc.connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, config=config.config)
-        self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
+        self.consultant = rpyc.ssl_connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, keyfile="cert/client/key.pem", certfile="cert/client/certificate.pem", config=config.config)
+        self.server = rpyc.ssl_connect(config.SERVER_IP, config.SERVER_PORT, keyfile="cert/client/key.pem", certfile="cert/client/certificate.pem", config=config.config)
         self.PKs = deserialize_PKs(self.consultant.root.get_public_parameters())
         self.id = str(uuid.uuid4())
         self.port = random.randint(1024, 65535)
@@ -286,7 +287,8 @@ class Client(rpyc.Service):
         self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id, serialize_public_key(self.signingkey.public_key())), self.PKs)
 
     def start_server(self):
-        t = ThreadedServer(self, port=self.port, protocol_config=config.config)
+        authenticator = SSLAuthenticator("cert/client/key.pem","cert/client/certificate.pem")
+        t = ThreadedServer(self, port=self.port, protocol_config=config.config, authenticator=authenticator)
         thread = threading.Thread(target=t.start)
         thread.start()
 

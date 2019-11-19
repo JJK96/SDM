@@ -4,8 +4,7 @@ from funcs import *
 import rpyc
 import copy
 from rpyc.utils.server import ThreadedServer
-from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.server import SimpleXMLRPCRequestHandler
+from rpyc.utils.authenticators import SSLAuthenticator
 from socket import socket
 import traceback
 import config
@@ -21,7 +20,7 @@ class ConsultantClient():
         self.port = port
         self.id = id
         self.public_key = public_key
-        self.conn = rpyc.connect(ip, port, config=config.config)
+        self.conn = rpyc.ssl_connect(ip, port, config=config.config, keyfile="cert/consultant/key.pem", certfile="cert/consultant/certificate.pem")
 
 class Consultant():
     """ 
@@ -37,7 +36,7 @@ class Consultant():
         self.id = uuid.uuid4().int
  
     def connect_server(self):
-        self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
+        self.server = rpyc.ssl_connect(config.SERVER_IP, config.SERVER_PORT, keyfile="cert/client/key.pem", certfile="cert/client/certificate.pem", config=config.config)
 
     def system_setup(self, τ):
         """
@@ -244,7 +243,8 @@ class ConsultantServer(rpyc.Service):
         return PKs['group'].serialize(D)
 
 if __name__ == "__main__":
-    server = ThreadedServer(ConsultantServer(), port = 8001, protocol_config=config.config)
+    authenticator = SSLAuthenticator("cert/consultant/key.pem", "cert/consultant/certificate.pem")
+    server = ThreadedServer(ConsultantServer(), port = 8001, protocol_config=config.config, authenticator=authenticator)
     server.start() 
 # c = ConsultantServer()
 # c.exposed_get_public_parameters()
