@@ -11,11 +11,12 @@ client = Client()
 
 @app.route("/upload", methods=['POST'])
 def upload():
-    f = request.files['file']
-    filename = secure_filename(f.filename)
-    fullname = os.path.join(UPLOAD_FOLDER, filename)
-    f.save(fullname) 
-    client.upload_file(fullname)
+    uploaded_files = request.files.getlist("files")
+    for f in uploaded_files:
+        filename = secure_filename(f.filename)
+        fullname = os.path.join(UPLOAD_FOLDER, filename)
+        f.save(fullname) 
+        client.upload_file(fullname)
     return 'upload successful'
 
 @app.route("/search", methods=['GET'])
