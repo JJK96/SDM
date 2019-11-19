@@ -56,7 +56,7 @@ class Client(rpyc.Service):
         ## Step 3
         self.CTi['ci'] = self.CTi['ci'] ** t
 
-    def _build_index(self, L):
+    def _build_index(self, L, client_id: str=None):
         """
         This function takes as input:
         o Keyword list `L`
@@ -65,11 +65,14 @@ class Client(rpyc.Service):
         This function outputs secure index `IL`
         """
         # assert len(L) == self.PKs['l'], "Keyword list should be l long"
+        if client_id is None:
+            client_id = self.id
+        
         SKg = self.SKg
         α = SKg['α']
 
-        roots = []
-        for i in range(0, self.PKs['l']):
+        roots = [int(α * hash_Zn(client_id, self.PKs['group']))]
+        for i in range(1, self.PKs['l']):
             if i < len(L):
                 word = L[i]
             else:
@@ -85,7 +88,7 @@ class Client(rpyc.Service):
         IL = [g ** (rs * self.PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
         return IL
 
-    def index_gen(self, D):
+    def index_gen(self, D, client_id: str=None):
         """
         This function makes a secure index. It takes as input:
         o A document D
@@ -98,7 +101,7 @@ class Client(rpyc.Service):
         print(keywords)
         R, Ed = encrypt_document(D)
         
-        return self._build_index(keywords), R, Ed
+        return self._build_index(keywords, client_id), R, Ed
 
     def data_encrypt(self, R, IR, Ed):
         """
@@ -245,18 +248,15 @@ class Client(rpyc.Service):
         return IL
 
 
-    def upload_file(self, file_location, recipient: int=-1):
+    def upload_file(self, file_location):
         assert self.CTi is not None, "Client needs a certificate!"
-        
-        if recipient == -1:
-            recipient = self.id
 
         D = read_file(file_location)
         IR, R, Ed = self.index_gen(D)
         Ir, Er = self.data_encrypt(R, IR, Ed)
         IrSerialized = serialize_IL(Ir, self.PKs)
 
-        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), recipient)
+        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), self.id)
 
     
     def get_files_by_keywords(self, keywords):
