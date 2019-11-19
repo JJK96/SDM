@@ -116,13 +116,12 @@ def extract_keywords(doc: str) -> List[str]:
     return result
 
 
-def encrypt_document(doc: str) -> (bytes, bytes):
-    doc_raw = doc.encode('utf-8')
+def encrypt_document(doc: bytes) -> (bytes, bytes):
 
     key = get_random_bytes(32)
     cipher = AES.new(key, AES.MODE_EAX)
 
-    ciphertext, tag = cipher.encrypt_and_digest(doc_raw)
+    ciphertext, tag = cipher.encrypt_and_digest(doc)
 
     return key, cipher.nonce + tag + ciphertext
 
@@ -134,9 +133,8 @@ def gen_signing_key() -> ECC.EccKey:
 def decrypt_document(key: bytes, ciphertext: bytes) -> str:
     nonce, tag, ciphertext = ciphertext[:16], ciphertext[16:32], ciphertext[32:]
     cipher = AES.new(key, AES.MODE_EAX, nonce)
-    doc_raw = cipher.decrypt_and_verify(ciphertext, tag)
-
-    return doc_raw.decode('utf-8')
+    doc = cipher.decrypt_and_verify(ciphertext, tag)
+    return doc
 
 
 def trapdoor_to_bytes(trapdoor: List[pairing.pc_element]) -> bytes:
