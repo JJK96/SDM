@@ -77,7 +77,7 @@ class Client(rpyc.Service):
         roots = [int(α * hash_Zn(client_id, self.PKs['group']))]
         for i in range(1, self.PKs['l']):
             if i < len(L):
-                word = L[i]
+                word = L[i-1]
             else:
                 word = '⊥'
             roots.append(int(α * hash_Zn(word, self.PKs['group'])))
