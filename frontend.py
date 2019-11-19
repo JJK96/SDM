@@ -14,10 +14,7 @@ client = Client()
 def upload():
     f = request.files.get('file')
     keywords = request.form['keywords']
-    filename = secure_filename(f.filename)
-    fullname = os.path.join(UPLOAD_FOLDER, filename)
-    f.save(fullname)
-    client.upload_file(fullname, keywords)
+    client.upload_file(f.read(), keywords)
     return 'upload successful'
 
 
