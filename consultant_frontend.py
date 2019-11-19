@@ -14,6 +14,7 @@ consultant_server = ConsultantServer()
 def upload():
     f = request.files.get('file')
     keywords = request.form['keywords']
+    client = request.form['client']
     filename = secure_filename(f.filename)
     fullname = os.path.join(UPLOAD_FOLDER, filename)
     f.save(fullname)
@@ -36,7 +37,7 @@ def search():
 
 @app.route("/")
 def home():
-    return redirect('/static/index.html')
+    return redirect('static/consultant.html')
 
 
 if __name__ == "__main__":

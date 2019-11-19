@@ -1,26 +1,19 @@
-from typing import List, Dict, Set, Tuple, Callable
-from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, pair, order, H
-import charm.core.math.pairing as pairing
-from funcs import *
-from numpy.polynomial.polynomial import polyfromroots
-import numpy as np
+import random
+import threading
 import uuid
-import os
+
 import rpyc
+from charm.toolbox.pairinggroup import G1, pair
+from numpy.polynomial.polynomial import polyfromroots
 from rpyc.utils.authenticators import SSLAuthenticator
 from rpyc.utils.server import ThreadedServer
-import pickle
-import time
-import threading
+
 import config
+from funcs import *
 from serialization import *
-import random
-from Crypto.PublicKey import ECC
 
 
 # DEBUG
-import code
-from charm.toolbox.pairingcurves import params as param_info  # dictionary with possible pairing param_id
 
 
 class Client(rpyc.Service):
@@ -230,23 +223,23 @@ class Client(rpyc.Service):
     #  /DataDcrypt
     ###
 
-    #Unused!
-    def build_index(self, L):
-        SKg = self.SKg
-        α = SKg['α']
-
-        roots = []
-        for word in L:
-            roots.append(α * hash_Zn(keywords[word], self.PKs['group']))
-
-        polynomial_coefficients = list(polyfromroots(roots))
-        
-        rs = num_Zn_star_not_one(self.PKs['q'], self.PKs['group'].random, ZR)
-
-        g = self.PKs['g']
-
-        IL = [g ** (rs * i) for i in polynomial_coefficients]
-        return IL
+    # #Unused!
+    # def build_index(self, L):
+    #     SKg = self.SKg
+    #     α = SKg['α']
+    #
+    #     roots = []
+    #     for word in L:
+    #         roots.append(α * hash_Zn(keywords[word], self.PKs['group']))
+    #
+    #     polynomial_coefficients = list(polyfromroots(roots))
+    #
+    #     rs = num_Zn_star_not_one(self.PKs['q'], self.PKs['group'].random, ZR)
+    #
+    #     g = self.PKs['g']
+    #
+    #     IL = [g ** (rs * i) for i in polynomial_coefficients]
+    #     return IL
 
 
     def upload_file(self, file_contents, keywords):
