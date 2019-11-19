@@ -36,7 +36,7 @@ class Client(rpyc.Service):
         self.id = str(uuid.uuid4())
         self.port = random.randint(1024, 65535)
         self.CTi = None
-        self.start_server()
+        # self.start_server()
         self.join_consultant()
     
     ###
@@ -44,12 +44,12 @@ class Client(rpyc.Service):
     #  Builds searchable encrypted data that are uploaded to the server.
     ###
 
-    def exposed_add_certificate(self, _CTi):
-        self.CTi = deserialize_CTi(_CTi, self.PKs)
-        self.last_update = time.time()
+    # def exposed_add_certificate(self, _CTi):
+    #     self.CTi = deserialize_CTi(_CTi, self.PKs)
+    #     self.last_update = time.time()
 
-    def exposed_update_certificate(self, t: pairing.pc_element):
-        assert self.CTi is not None, "Client has no certificate to update!"
+    # def exposed_update_certificate(self, t: pairing.pc_element):
+    #     assert self.CTi is not None, "Client has no certificate to update!"
         # t = self.PKs['group'].deserialize(t)
 
         # ## Step 1
@@ -303,7 +303,10 @@ class Client(rpyc.Service):
     
     def join_consultant(self):
         assert self.CTi is None, "Client already has a certificate!"
-        self.SKg = deserialize_SKg(self.consultant.root.join(self.port, self.id, serialize_public_key(self.signingkey.public_key())), self.PKs)
+        serialized_cti, serialized_skg = self.consultant.root.join(self.port, self.id, serialize_public_key(self.signingkey.public_key()))
+        self.SKg = deserialize_SKg(serialized_skg, self.PKs)
+        self.CTi = deserialize_CTi(serialized_cti, self.PKs)
+        self.last_update = time.time()
 
     def start_server(self):
         authenticator = SSLAuthenticator("cert/client/key.pem","cert/client/certificate.pem")

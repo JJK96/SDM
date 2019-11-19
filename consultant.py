@@ -19,11 +19,11 @@ import code
 
 class ConsultantClient():
     def __init__(self, ip, port, id, public_key):
-        self.ip = ip
-        self.port = port
+        # self.ip = ip
+        # self.port = port
         self.id = id
         self.public_key = public_key
-        self.conn = rpyc.ssl_connect(ip, port, config=config.config, keyfile="cert/consultant/key.pem", certfile="cert/consultant/certificate.pem")
+        # self.conn = rpyc.ssl_connect(ip, port, config=config.config, keyfile="cert/consultant/key.pem", certfile="cert/consultant/certificate.pem")
 
 class Consultant(Client):
     """ 
@@ -43,7 +43,7 @@ class Consultant(Client):
         self.member_join(self)
  
     def connect_server(self):
-        self.server = rpyc.ssl_connect(config.SERVER_IP, config.SERVER_PORT, keyfile="cert/client/key.pem", certfile="cert/client/certificate.pem", config=config.config)
+        self.server = rpyc.ssl_connect(config.SERVER_IP, config.SERVER_PORT, keyfile="cert/consultant/key.pem", certfile="cert/consultant/certificate.pem", config=config.config)
 
     def system_setup(self, τ):
         """
@@ -126,16 +126,7 @@ class Consultant(Client):
             self.CTi['ci'] = self.CTi['ci'] ** t
             self.t *= t
             self.ts.append((time.time(), t))
-            to_delete = []
-            for id, member in self.G.items():
-                print("sending to old members")
-                try:
-                    member.conn.root.update_certificate(group.serialize(t))
-                except (BrokenPipeError, EOFError):
-                    # member left
-                    to_delete.append(id)
-            for id in to_delete:
-                del self.G[id]
+
             if not hasattr(self, 'server'):
                 self.connect_server()
             self.server.root.update_public_key(group.serialize(t))
@@ -153,7 +144,9 @@ class Consultant(Client):
             # Add the new members to the member group
             self.G[M.id] = M
 
-        M.conn.root.add_certificate(serialize_CTi(M.CTi, self.PKs))
+            return serialize_CTi(M.CTi, self.PKs)
+        else:
+            return None
         
         ## Step 3: let old members update ci, we do this already in member.update_certificate
 
@@ -184,8 +177,7 @@ class Consultant(Client):
 
         t = group.serialize(t)
         del self.G[M.id]
-        for member in self.G.values():
-            member.conn.root.update_certificate(t)
+
         if not hasattr(self, 'server'):
             self.connect_server()
         self.server.root.update_public_key(t)
@@ -301,11 +293,11 @@ class ConsultantServer(rpyc.Service):
         print("join")
         client = self.consultant.G.get(id, ConsultantClient(self.ip, port, id, deserialize_public_key(public_key)))
         try:
-            self.consultant.member_join(client)
+            serialized_cti = self.consultant.member_join(client)
+            SKg = serialize_SKg(self.consultant.SKg, self.consultant.PKs)
+            return serialized_cti, SKg
         except Exception:
             traceback.print_exc()
-        SKg = serialize_SKg(self.consultant.SKg, self.consultant.PKs)
-        return SKg
 
     def exposed_leave(self, id):
         print("leave")
