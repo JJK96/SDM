@@ -89,7 +89,7 @@ class Client(rpyc.Service):
         IL = [g ** (rs * self.PKs['group'].init(ZR, i)) for i in polynomial_coefficients]
         return IL
 
-    def index_gen(self, D, client_id: str=None):
+    def index_gen(self, D, keywords, client_id: str=None):
         """
         This function makes a secure index. It takes as input:
         o A document D
@@ -98,7 +98,7 @@ class Client(rpyc.Service):
 
         This function outputs secure index IR, document encryption key R and encrypted document Ed
         """
-        keywords = extract_keywords(D)
+        keywords = extract_keywords(keywords)
         print(keywords)
         R, Ed = encrypt_document(D)
         
@@ -249,11 +249,11 @@ class Client(rpyc.Service):
         return IL
 
 
-    def upload_file(self, file_location):
+    def upload_file(self, file_location, keywords):
         assert self.CTi is not None, "Client needs a certificate!"
 
         D = read_file(file_location)
-        IR, R, Ed = self.index_gen(D)
+        IR, R, Ed = self.index_gen(D, keywords)
         Ir, Er = self.data_encrypt(R, IR, Ed)
         IrSerialized = serialize_IL(Ir, self.PKs)
 
