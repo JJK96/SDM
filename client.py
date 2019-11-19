@@ -33,7 +33,9 @@ class Client(rpyc.Service):
         self.consultant = rpyc.ssl_connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, keyfile="cert/client/key.pem", certfile="cert/client/certificate.pem", config=config.config)
         self.server = rpyc.ssl_connect(config.SERVER_IP, config.SERVER_PORT, keyfile="cert/client/key.pem", certfile="cert/client/certificate.pem", config=config.config)
         self.PKs = deserialize_PKs(self.consultant.root.get_public_parameters())
-        self.id = str(uuid.uuid4())
+        print("Enter name: ")
+        name = input()
+        self.id = "{} ({})".format(name,str(uuid.uuid4()))
         self.port = random.randint(1024, 65535)
         self.CTi = None
         self.start_server()
