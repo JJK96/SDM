@@ -4,9 +4,6 @@ from consultant import ConsultantServer
 import os
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
 consultant_server = ConsultantServer()
 
 
@@ -15,10 +12,7 @@ def upload():
     f = request.files.get('file')
     keywords = request.form['keywords']
     client = request.form['client']
-    filename = secure_filename(f.filename)
-    fullname = os.path.join(UPLOAD_FOLDER, filename)
-    f.save(fullname)
-    consultant_server.consultant.upload_file(fullname, None)
+    consultant_server.consultant.upload_file(f.read(), None)
     return 'upload successful'
 
 
