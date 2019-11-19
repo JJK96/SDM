@@ -17,7 +17,7 @@ def upload():
     filename = secure_filename(f.filename)
     fullname = os.path.join(UPLOAD_FOLDER, filename)
     f.save(fullname)
-    consultant_server.consultant.upload_file(fullname)
+    consultant_server.consultant.upload_file(fullname, None)
     return 'upload successful'
 
 
