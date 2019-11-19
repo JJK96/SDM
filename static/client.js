@@ -5,6 +5,13 @@ $(document).ready(function () {
     });
 });
 
+$(document).ready(function () {
+    $("#searchForm").submit(function () {
+        retrieveSearchResults();
+        return false;
+    });
+});
+
 function submitForm() {
 	var form_data = new FormData();
 	form_data.append('file', $('#file').prop('files')[0]);
@@ -26,4 +33,22 @@ function submitForm() {
             alert("Error");
         }
     });
+}
+
+function retrieveSearchResults() {
+    let data = {
+        query: $("#query").val(),
+    };
+
+    $.ajax({
+        type: "GET",
+        url: "/search",
+        data: data,
+        success: function (response) {
+            $("#searchResults").html(response)
+        },
+        error: function (error) {
+            alert(error)
+        }
+    })
 }
