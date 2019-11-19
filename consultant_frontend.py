@@ -12,7 +12,7 @@ def upload():
     f = request.files.get('file')
     keywords = request.form['keywords']
     client = request.form['client']
-    consultant_server.consultant.upload_file(f.read(), None)
+    consultant_server.consultant.upload_file(f.read(), None) #TODO should throw an error if no client id.
     return 'upload successful'
 
 
@@ -21,7 +21,7 @@ def search():
     query = request.args['q']
     query = query.split(' ')
     try:
-        result = consultant_server.consultant.get_files_by_keywords(query)
+        result = consultant_server.consultant.get_files_by_keywords(query) # TODO make search for client.id
     except KeyError as k:
         result = "Search word {} is not a keyword".format(str(k))
     except Exception as e:

@@ -230,12 +230,12 @@ class Consultant(Client):
     def get_public_params(self):
         return self.PKs
 
-    def upload_file(self, file_contents, client_id):
+    def upload_file(self, file_contents, keywords, client_id):
         assert self.CTi is not None, "Consultant needs a certificate!"
         assert hasattr(self, 'server'), "Server has not yet been initialized!"
 
         D = file_contents
-        IR, R, Ed = self.index_gen(D, client_id)
+        IR, R, Ed = self.index_gen(D, keywords, client_id)
         Ir, Er = self.data_encrypt(R, IR, Ed)
         IrSerialized = serialize_IL(Ir, self.PKs)
 
