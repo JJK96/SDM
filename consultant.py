@@ -11,6 +11,7 @@ import traceback
 import config
 from serialization import *
 import uuid
+from client import Client
 
 #DEBUG
 import code
@@ -23,7 +24,7 @@ class ConsultantClient():
         self.public_key = public_key
         self.conn = rpyc.connect(ip, port, config=config.config)
 
-class Consultant():
+class Consultant(Client):
     """ 
     This is also the group manager (GM)
     """
@@ -34,7 +35,11 @@ class Consultant():
         self.system_setup(τ)
         self.G = {}
         self.signingkey = gen_signing_key()
-        self.id = uuid.uuid4().int
+        self.id = str(uuid.uuid4())
+        self.group_auth()
+    
+    def create_consultant_user(self):
+        self.member_join(self)
  
     def connect_server(self):
         self.server = rpyc.connect(config.SERVER_IP, config.SERVER_PORT, config=config.config)
@@ -56,7 +61,7 @@ class Consultant():
         Y = g ** y
         Pp = P ** λ
         Qp = Q ** (λ - σ)
-        self.PKs = {'l': 20, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
+        self.PKs = {'l': 21, 'curve':curve, 'secparam':τ, 'group':group, 'q': q, 'g': g, 'X': X, 'Y': Y}
         self.SKg = {'α': α, 'P': P, 'Pp': Pp, 'Q': Q, 'Qp': Qp}
         self.MK = {'x': x, 'y': y, 'λ': λ, 'σ': σ}
         self.t = 1
@@ -69,6 +74,27 @@ class Consultant():
     #  AuthCodGen
     #  Generates the group membership certificates
     ###
+
+    def group_auth(self):
+        """
+        This function is executed by the GM and makes the membership certificate for every member in `G`. Takes as input:
+        o Identities {ID_i }; 1 <= i <= N of all members {M_i}; 1 <= i <= N in `G`
+        o The system public key `self.PKs`
+        o The master key `self.MK`
+        This function outputs Membership certificates {CT_i}; 1 <= i <= N for all members
+        """
+        group = self.PKs['group']
+        x = self.MK['x']
+        y = self.MK['y']
+
+        ## Step 1
+        ai = group.random(G1)
+        bi = ai ** y
+        ci = ai ** (x + hash_Zn(self.id, group) * x * y)
+
+        self.CTi = {'IDi': self.id, 'ai': ai, 'bi': bi, 'ci': ci}
+
+        ## Step 2: keep CTi secret!
 
     def member_join(self, M):
         """
@@ -95,6 +121,7 @@ class Consultant():
             ## Step 1
             t = num_Zn_star_not_one(q, group.random, ZR)
             self.PKs['X'] = X ** t
+            self.CTi['ci'] = self.CTi['ci'] ** t
             self.t *= t
             to_delete = []
             for id, member in self.G.items():
@@ -148,6 +175,7 @@ class Consultant():
         ## Step 1
         t = num_Zn_star_not_one(q, group.random, ZR)
         self.PKs['X'] = X ** t
+        self.CTi['ci'] = self.CTi['ci'] ** t
         t = group.serialize(t)
         del self.G[M.id]
         for member in self.G.values():
@@ -202,6 +230,42 @@ class Consultant():
 
     def get_public_params(self):
         return self.PKs
+    
+
+    def upload_file(self, file_location, client_id):
+        assert self.CTi is not None, "Consultant needs a certificate!"
+        assert hasattr(self, 'server'), "Server has not yet been initialized!"
+
+        D = read_file(file_location)
+        IR, R, Ed = self.index_gen(D, client_id)
+        Ir, Er = self.data_encrypt(R, IR, Ed)
+        IrSerialized = serialize_IL(Ir, self.PKs)
+
+        self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), client_id)
+
+    
+    def get_files_by_keywords(self, keywords):
+        assert self.CTi is not None, "Consultant needs a certificate!"
+        assert hasattr(self, 'server'), "Server has not yet been initialized!"
+
+        files = []
+        group = self.PKs['group']
+        trapdoor = self.make_trapdoor(keywords)
+        CTi_serialized = serialize_CTi(self.CTi, self.PKs)
+
+        signature = sign_message(self.signingkey, trapdoor)
+
+        search_results = self.server.root.search_index(serialize_trapdoor(trapdoor, self.PKs), CTi_serialized, signature)
+        if search_results == config.ACCESS_DENIED:
+            return config.ACCESS_DENIED
+        for i, result in enumerate(search_results):
+            result = deserialize_Er(result, self.PKs)
+            Up, ν = self.data_aux(result)
+            # D = group.deserialize(self.consultant.root.get_decryption_key(group.serialize(Up), CTi_serialized))
+            D = self.get_decryption_key(Up, self.CTi)
+            Rp, Ed = self.member_decrypt(result, D, ν)
+            files.append(decrypt_document(Rp, Ed))
+        return files
 
 class ConsultantServer(rpyc.Service):
     def __init__(self):
