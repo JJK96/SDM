@@ -9,15 +9,17 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 client = Client()
 
+
 @app.route("/upload", methods=['POST'])
 def upload():
-    uploaded_files = request.files.getlist("files")
-    for f in uploaded_files:
-        filename = secure_filename(f.filename)
-        fullname = os.path.join(UPLOAD_FOLDER, filename)
-        f.save(fullname) 
-        client.upload_file(fullname)
+    f = request.files.get('file')
+    keywords = request.form['keywords']
+    filename = secure_filename(f.filename)
+    fullname = os.path.join(UPLOAD_FOLDER, filename)
+    f.save(fullname)
+    client.upload_file(fullname)
     return 'upload successful'
+
 
 @app.route("/search", methods=['GET'])
 def search():
@@ -31,9 +33,11 @@ def search():
         result = str(e)
     return str(result)
 
+
 @app.route("/")
 def home():
     return redirect('/static/index.html')
+
 
 if __name__ == "__main__":
     app.run(debug=True)
