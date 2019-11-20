@@ -240,25 +240,6 @@ class Client(rpyc.Service):
     #  /DataDcrypt
     ###
 
-    # #Unused!
-    # def build_index(self, L):
-    #     SKg = self.SKg
-    #     α = SKg['α']
-    #
-    #     roots = []
-    #     for word in L:
-    #         roots.append(α * hash_Zn(keywords[word], self.PKs['group']))
-    #
-    #     polynomial_coefficients = list(polyfromroots(roots))
-    #
-    #     rs = num_Zn_star_not_one(self.PKs['q'], self.PKs['group'].random, ZR)
-    #
-    #     g = self.PKs['g']
-    #
-    #     IL = [g ** (rs * i) for i in polynomial_coefficients]
-    #     return IL
-
-
     def upload_file(self, file_contents, keywords):
         assert self.CTi is not None, "Client needs a certificate!"
 
