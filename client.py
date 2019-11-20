@@ -116,16 +116,15 @@ class Client(rpyc.Service):
         
         return self._build_index(keywords, client_id), R, Ed
 
-    def data_encrypt(self, R, IR, Ed):
+    def data_encrypt(self, R, Ed):
         """
         This function encrypts the data. It takes as input:
         o A data encryption key `R`
         o A encrypted data `Ed` encrypted with `R`
         o System public key `self.PKs`
         o Group secret key `self.SKg`
-        o Secure index IR corresponding to data `R`
 
-        This function outputs encrypted data E(R) and uploads E(R) to the server
+        This function outputs encrypted data E(R)
         """
         group = self.PKs['group']
         q = self.PKs['q']
@@ -139,8 +138,7 @@ class Client(rpyc.Service):
         V = xor(R, hash_p(pair(Q, Pp) ** γ))
 
         Er = (U, V, Ed, sign_message(self.signingkey, Ed))
-        # Upload E(R) and Ir to the server; print for now
-        return IR, Er
+        return Er
 
     ###
     #  /DataGen
@@ -268,8 +266,8 @@ class Client(rpyc.Service):
 
         D = file_contents
         IR, R, Ed = self.index_gen(D, keywords, self.id)
-        Ir, Er = self.data_encrypt(R, IR, Ed)
-        IrSerialized = serialize_IL(Ir, self.PKs)
+        Er = self.data_encrypt(R, Ed)
+        IrSerialized = serialize_IL(IR, self.PKs)
 
         self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), self.id)
 
