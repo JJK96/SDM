@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    $("#uploadForm").submit(function (event) {
+    $("#uploadForm").submit(function () {
         submitForm();
         return false;
     });
@@ -13,20 +13,23 @@ $(document).ready(function () {
 });
 
 function submitForm() {
-	var form_data = new FormData();
-	form_data.append('file', $('#file').prop('files')[0]);
-	form_data.append('keywords', $('#KeywordsTextArea').val());
-	console.log(form_data);
+    let form_data = new FormData();
+    form_data.append('file', $('#file').prop('files')[0]);
+    form_data.append('keywords', $('#KeywordsTextArea').val());
 
     $.ajax({
         type: "POST",
         url: "/upload",
-		contentType: false,
+        contentType: false,
         cache: false,
         processData: false,
-		data: form_data,
+        data: form_data,
         success: function (response) {
-            $("#uploadFileButton").html(response);
+            $('<div class="alert alert-success radius-bordered fade show" id="uploadAlert" role="alert">\n' +
+                '    Upload of file successful!\n' +
+                '</div>\n').appendTo('body').delay(3000).fadeOut(function () {
+                $(this).remove()
+            });
             $("#UploadFileModal").modal('hide');
         },
         error: function () {
@@ -48,7 +51,7 @@ function retrieveSearchResults() {
             $("#searchResults").html(response)
         },
         error: function (error) {
-            alert(e.message)
+            alert(error.message)
         }
     })
 }
