@@ -10,6 +10,7 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA512
 from Crypto.Signature import DSS
 from Crypto.PublicKey import ECC
+import base64
 
 def num_Zn_star(n, fun, *args):
     """
@@ -168,6 +169,8 @@ def verify_message(pubkey, message: Union[bytes, List[pairing.pc_element]], sign
     except ValueError:
         return False
 
+def encode_client_id(client_id):
+    return base64.b64encode(client_id.encode()).decode()
 
 if __name__ == '__main__':
     print(poly_from_roots([6, 2, 3]))

@@ -2,6 +2,7 @@ from flask import Flask, redirect, request, render_template
 from werkzeug.utils import secure_filename
 from consultant import ConsultantServer
 import os
+from funcs import *
 
 app = Flask(__name__)
 consultant_server = ConsultantServer()
@@ -25,7 +26,8 @@ def search():
     print(request.args)
     query = request.args['q']
     query = query.split(' ')
-    client_id = request.args['clientID']
+    client = request.args['clientID']
+    query.append(encode_client_id(client))
     try:
         result = consultant_server.consultant.get_files_by_keywords(query) # TODO make search for client.id
     except KeyError as k:
