@@ -245,8 +245,8 @@ class Consultant(Client):
 
         D = file_contents
         IR, R, Ed = self.index_gen(D, keywords, client_id)
-        Ir, Er = self.data_encrypt(R, IR, Ed)
-        IrSerialized = serialize_IL(Ir, self.PKs)
+        Er = self.data_encrypt(R, Ed)
+        IrSerialized = serialize_IL(IR, self.PKs)
 
         self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), client_id)
 

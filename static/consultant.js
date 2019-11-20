@@ -26,7 +26,11 @@ function submitUploadForm() {
         processData: false,
 		data: form_data,
         success: function (response) {
-            $("#uploadFileButton").html(response);
+            $('<div class="alert alert-success radius-bordered fade show" id="uploadAlert" role="alert">\n' +
+                '    Upload of file successful!\n' +
+                '</div>\n').appendTo('body').delay(3000).fadeOut(function () {
+                $(this).remove()
+            });
             $("#UploadFileModal").modal('hide');
         },
         error: function () {
