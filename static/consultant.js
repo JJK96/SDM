@@ -37,7 +37,7 @@ function submitUploadForm() {
 
 function retrieveSearchResults() {
     let data = {
-        query: $("#query").val(),
+        q: $("#query").val(),
         clientID: $("#clientID option:selected").text(),
     };
 
@@ -49,7 +49,7 @@ function retrieveSearchResults() {
             $("#searchResults").html(response)
         },
         error: function (error) {
-            alert(error)
+            alert(error.message)
         }
     })
 }

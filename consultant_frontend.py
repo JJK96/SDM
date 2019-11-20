@@ -9,17 +9,21 @@ consultant_server = ConsultantServer()
 
 @app.route("/upload", methods=['POST'])
 def upload():
-    f = request.files.get('file')
-    keywords = request.form['keywords']
-    client = request.form['client']
-    consultant_server.consultant.upload_file(f.read(), None) #TODO should throw an error if no client id.
-    return 'upload successful'
+    try:
+        f = request.files.get('file')
+        keywords = request.form['keywords']
+        client = request.form['clientID']
+        consultant_server.consultant.upload_file(f.read(), keywords, client) #TODO should throw an error if no client id.
+        return 'upload successful'
+    except Exception as e:
+        print(e)
+
 
 
 @app.route("/search", methods=['GET'])
 def search():
     print(request.args)
-    query = request.args['query']
+    query = request.args['q']
     query = query.split(' ')
     client_id = request.args['clientID']
     try:

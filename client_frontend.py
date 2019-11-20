@@ -26,6 +26,7 @@ def search():
         result = "Search word {} is not a keyword".format(str(k))
     except Exception as e:
         result = str(e)
+        print(result)
     return str(result)
 
 

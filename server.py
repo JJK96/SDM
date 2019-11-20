@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import rpyc
 from charm.toolbox.pairinggroup import GT, pair, G1
@@ -170,10 +171,13 @@ class Server(rpyc.Service):
 
 
 if __name__ == '__main__':
-    consultant = rpyc.ssl_connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, keyfile="cert/server/key.pem", certfile="cert/server/certificate.pem", config=config.config)
-    PKs = consultant.root.get_public_parameters()
-    consultant_public_key = deserialize_public_key(consultant.root.get_public_key())
-    PKs = deserialize_PKs(PKs)
-    authenticator = SSLAuthenticator("cert/server/key.pem", "cert/server/certificate.pem")
-    server = ThreadedServer(Server(PKs, consultant_public_key), port=config.SERVER_PORT, protocol_config=config.config, authenticator=authenticator)
-    server.start()
+    try:
+        consultant = rpyc.ssl_connect(config.CONSULTANT_IP, config.CONSULTANT_PORT, keyfile="cert/server/key.pem", certfile="cert/server/certificate.pem", config=config.config)
+        PKs = consultant.root.get_public_parameters()
+        consultant_public_key = deserialize_public_key(consultant.root.get_public_key())
+        PKs = deserialize_PKs(PKs)
+        authenticator = SSLAuthenticator("cert/server/key.pem", "cert/server/certificate.pem")
+        server = ThreadedServer(Server(PKs, consultant_public_key), port=config.SERVER_PORT, protocol_config=config.config, authenticator=authenticator)
+        server.start()
+    finally:
+        shutil.rmtree(FILE_DIRECTORY)

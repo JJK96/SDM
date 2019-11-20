@@ -241,7 +241,7 @@ class Consultant(Client):
 
         self.server.root.add_file(IrSerialized, serialize_Er(Er, self.PKs), client_id)
 
-    def get_files_by_keywords(self, keywords):
+    def get_files_by_keywords(self, keywords, client=None):
         assert self.CTi is not None, "Consultant needs a certificate!"
         assert hasattr(self, 'server'), "Server has not yet been initialized!"
 

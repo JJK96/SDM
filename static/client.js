@@ -37,7 +37,7 @@ function submitForm() {
 
 function retrieveSearchResults() {
     let data = {
-        query: $("#query").val(),
+        q: $("#query").val(),
     };
 
     $.ajax({
@@ -48,7 +48,7 @@ function retrieveSearchResults() {
             $("#searchResults").html(response)
         },
         error: function (error) {
-            alert(error)
+            alert(e.message)
         }
     })
 }
