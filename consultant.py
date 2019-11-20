@@ -100,6 +100,13 @@ class Consultant(Client):
 
         ## Step 2: keep CTi secret!
 
+    def _check_unique_ai(self, ai):
+        """ Returns True if ai is unique (does not exist already), false if it is not. """
+        for M in self.G.values():
+            if M.CTi['ai'] == ai:
+                return False
+        return True
+
     def member_join(self, M):
         """
         This function is executed by the GM, interacting with old members when there are new members who wish to join
@@ -136,6 +143,8 @@ class Consultant(Client):
 
             ## Step 2
             ai = group.random(G1)
+            while (not self._check_unique_ai(ai)):
+                ai = group.random(G1)
             bi = ai ** y
             ci = ai ** (self.t * (x + hash_Zn(M.id, group) * x * y))
 
