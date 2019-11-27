@@ -1,5 +1,5 @@
-SERVER_IP = 'localhost'  # '130.89.177.135'
-CONSULTANT_IP = 'localhost'  # '130.89.177.135'
+SERVER_IP = 'localhost'
+CONSULTANT_IP = 'localhost'
 
 SERVER_PORT = 8000
 CONSULTANT_PORT = 8001
