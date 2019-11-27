@@ -2,7 +2,8 @@
 
 ## Running the application
 
-1. Edit [config.py](https://github.com/JJK96/SDM/blob/master/config.py) to set the ip addresses of the server and consultant.
+1. Edit [config.py](https://github.com/JJK96/SDM/blob/master/config.py) to set the ip addresses of the server and consultant. 
+Or use the default `localhost` when running on a single device.
 2. Run the consultant:
 ```
 python consultant_frontend.py
