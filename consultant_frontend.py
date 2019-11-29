@@ -27,7 +27,9 @@ def search():
     query = request.args['q']
     query = query.split(' ')
     client = request.args['clientID']
-    query.append(encode_client_id(client))
+    if client != "all clients":
+        query.append(encode_client_id(client))
+    print(query)
     try:
         result = consultant_server.consultant.get_files_by_keywords(query)  # TODO make search for client.id
     except KeyError as k:
