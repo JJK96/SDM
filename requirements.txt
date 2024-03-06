@@ -1,5 +1,5 @@
 flask
 plumbum==1.6.8
-rpyc==4.1.2
+rpyc==6.0.0
 pycryptodome==3.9.1
 Charm-Crypto==0.50
